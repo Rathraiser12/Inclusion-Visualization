@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Circular-Inclusion Stress Field</title>
+
+  <!-- Vite entry point -->
+  <script type="module" src="/src/main.ts"></script>
+
+  <!-- Tailwind utilities (desktop is fine) -->
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css"
+        rel="stylesheet">
+</head>
+
+<body class="bg-slate-50">
+
+  <!-- Header banner -------------------------------------------------- -->
+  <header class="p-2 bg-slate-200 text-sm">
+    σ-field visualiser &nbsp;|&nbsp; click-drag = pan &nbsp;|&nbsp; wheel = zoom
+  </header>
+
+  <!-- Fixed-size desktop layout -------------------------------------- -->
+  <main class="flex mt-4 ml-4">
+
+    <!-- 900 × 550-pixel WebGL viewport -->
+    <canvas id="glCanvas"
+        class="flex-none"
+        style="width: 1500px; height: 900px;"></canvas>
+
+
+    <!-- 280-px sidebar with controls -->
+    <aside class="flex-none w-[280px] ml-4 overflow-y-auto text-sm">
+
+      <!-- Geometry & load ------------------------------------------- -->
+      <fieldset class="space-y-1 mb-4">
+        <legend class="font-semibold">Geometry &amp; load</legend>
+        <label>r<sub>0</sub> <input type="number" id="r0" value="1" step="0.1"></label><br>
+        <label>λ <input type="number" id="lambda" value="1" step="0.05"></label><br>
+        <label>β&nbsp;[deg] <input type="number" id="beta" value="0" step="5"></label><br>
+        <label>S <input type="number" id="S" value="1" step="0.1"></label>
+      </fieldset>
+
+      <!-- Material --------------------------------------------------- -->
+      <fieldset class="space-y-1 mb-4">
+        <legend class="font-semibold">Material</legend>
+        <label>μ<sub>M</sub> <input type="number" id="muM" value="1" step="0.1"></label><br>
+        <label>μ<sub>P</sub> <input type="number" id="muP" value="5" step="0.1"></label><br>
+        <label>κ<sub>M</sub> <input type="number" id="kappaM" value="1.33" step="0.01"></label><br>
+        <label>κ<sub>P</sub> <input type="number" id="kappaP" value="1.33" step="0.01"></label>
+      </fieldset>
+
+      <!-- Component picker ------------------------------------------ -->
+      <fieldset class="mb-4">
+        <legend class="font-semibold mb-1">Component</legend>
+        <label><input name="comp" type="radio" value="0" checked> σ<sub>xx</sub></label>
+        <label><input name="comp" type="radio" value="1"> σ<sub>yy</sub></label>
+        <label><input name="comp" type="radio" value="2"> τ<sub>xy</sub></label>
+      </fieldset>
+
+      <!-- Colour map ------------------------------------------------- -->
+      <fieldset>
+        <legend class="font-semibold mb-1">Colour map</legend>
+        <select id="cmap" class="w-full">
+          <option value="0">Rainbow (blue → red)</option>
+          <option value="1">Jet (blue→cyan→yellow→red)</option>
+          <option value="2">Hot (black→red→yellow→white)</option>
+          <option value="3">Cool–Warm (blue ↔ white ↔ red)</option>
+          <option value="4">Inverted Cool–Warm (red ↔ white ↔ blue)</option>
+        </select>
+      </fieldset>
+
+    </aside>
+  </main>
+</body>
+</html>
