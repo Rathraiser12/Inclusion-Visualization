@@ -1,75 +1,202 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="h-full scroll-smooth">
 <head>
   <meta charset="utf-8" />
-  <title>Circular-Inclusion Stress Field</title>
+  <title>Stress-field visualiser</title>
 
-  <!-- Vite entry point -->
-  <script type="module" src="/src/main.ts"></script>
+  <!-- global font (Inter) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 
-  <!-- Tailwind utilities (desktop is fine) -->
-  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css"
-        rel="stylesheet">
+  <!-- Tailwind JIT CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- (optional theme tweaks) -->
+  <script>
+    tailwind.config = { theme: { extend: {} } };
+  </script>
+
+  <!-- Tailwind-aware custom CSS -->
+  <style type="text/tailwindcss">
+    body, html   {@apply antialiased font-["Inter",sans-serif];}
+
+    /* boxed panels */
+    .sidebar-box        {@apply bg-white border border-slate-300 rounded-md shadow-sm;}
+    .sidebar-box-header {@apply bg-slate-100 border-b border-slate-300 rounded-t-md
+                               px-3 py-1 text-sm font-semibold text-slate-700;}
+    .sidebar-box-body   {@apply px-3 py-2 space-y-2;}
+
+    /* grids & labels */
+    .sidebar-grid       {@apply grid grid-cols-2 gap-2;}
+    .sidebar-grid label,
+    .sidebar-select,
+    .radio              {@apply flex items-center gap-1 text-xs;}
+
+    /* inputs / selects */
+  .sidebar-grid input:not([type="radio"]),
+  .sidebar-select {
+    @apply w-full bg-white border border-slate-300 rounded
+           px-2 py-1 text-right tabular-nums           /* ← replace here */
+           focus:outline-none focus:ring-2 focus:ring-sky-400;
+  }
+    /* stress table numbers */
+    #stressTable th,
+    #stressTable td     {@apply tabular-nums;}
+
+    /* primary button */
+    .btn-primary        {@apply rounded-md bg-sky-600 text-white py-1.5
+                               hover:bg-sky-700 active:bg-sky-800;}
+  </style>
 </head>
 
-<body class="bg-slate-50">
+<body class="h-full flex flex-col bg-slate-50 text-[13px] leading-5 text-slate-600">
 
-  <!-- Header banner -------------------------------------------------- -->
-  <header class="p-2 bg-slate-200 text-sm">
-    σ-field visualiser &nbsp;|&nbsp; click-drag = pan &nbsp;|&nbsp; wheel = zoom
+  <!-- ───── title bar ───── -->
+  <header class="py-4 text-center space-y-1">
+    <h1 class="text-xl font-semibold">
+      Infinite plate with a circular inclusion under simple tension
+    </h1>
+    <p class="text-xs text-slate-500">
+      (demo visualiser | drag = pan · wheel = zoom)
+    </p>
   </header>
 
-  <!-- Fixed-size desktop layout -------------------------------------- -->
-  <main class="flex mt-4 ml-4">
+  <!-- ───── main area ───── -->
+  <main class="flex-1 flex justify-center items-center">
 
-    <!-- 900 × 550-pixel WebGL viewport -->
-    <canvas id="glCanvas"
-        class="flex-none"
-        style="width: 1500px; height: 900px;"></canvas>
+    <!-- left arrows -->
+    <div class="hidden lg:flex flex-col justify-between text-2xl text-slate-500 select-none pr-2">
+      <span>←</span><span>←</span><span>←</span><span>←</span><span>←</span>
+      <span>←</span><span>←</span><span>←</span><span>←</span>
+    </div>
 
+    <!-- canvas -->
+    <section class="relative bg-white ring-1 ring-slate-200" style="width:640px;height:640px;">
+      <canvas id="glCanvas" class="w-full h-full block"></canvas>
+    </section>
 
-    <!-- 280-px sidebar with controls -->
-    <aside class="flex-none w-[280px] ml-4 overflow-y-auto text-sm">
+    <!-- right arrows -->
+    <div class="hidden lg:flex flex-col justify-between text-2xl text-slate-500 select-none pl-2">
+      <span>→</span><span>→</span><span>→</span><span>→</span><span>→</span>
+      <span>→</span><span>→</span><span>→</span><span>→</span>
+    </div>
 
-      <!-- Geometry & load ------------------------------------------- -->
-      <fieldset class="space-y-1 mb-4">
-        <legend class="font-semibold">Geometry &amp; load</legend>
-        <label>r<sub>0</sub> <input type="number" id="r0" value="1" step="0.1"></label><br>
-        <label>λ <input type="number" id="lambda" value="1" step="0.05"></label><br>
-        <label>β&nbsp;[deg] <input type="number" id="beta" value="0" step="5"></label><br>
-        <label>S <input type="number" id="S" value="1" step="0.1"></label>
-      </fieldset>
+    <!-- ───── sidebar ───── -->
+    <aside class="w-80 shrink-0 overflow-y-auto ml-6 bg-white/80 backdrop-blur-sm
+                  shadow-2xl ring-1 ring-black/5 px-4 py-5 space-y-5">
 
-      <!-- Material --------------------------------------------------- -->
-      <fieldset class="space-y-1 mb-4">
-        <legend class="font-semibold">Material</legend>
-        <label>μ<sub>M</sub> <input type="number" id="muM" value="1" step="0.1"></label><br>
-        <label>μ<sub>P</sub> <input type="number" id="muP" value="5" step="0.1"></label><br>
-        <label>κ<sub>M</sub> <input type="number" id="kappaM" value="1.33" step="0.01"></label><br>
-        <label>κ<sub>P</sub> <input type="number" id="kappaP" value="1.33" step="0.01"></label>
-      </fieldset>
+      <!-- Geometry & load -->
+      <div class="sidebar-box">
+        <div class="sidebar-box-header">Geometry &amp; load</div>
+        <div class="sidebar-box-body sidebar-grid">
+          <label>r₀  <input id="r0"      type="number" value="0.25" step="0.01"></label>
+          <label>λ   <input id="lambda"  type="number" value="1.00" step="0.01"></label>
+          <label>β°  <input id="beta"    type="number" value="0"    step="1"></label>
+          <label>S   <input id="S"       type="number" value="1.00" step="0.01"></label>
+        </div>
+      </div>
 
-      <!-- Component picker ------------------------------------------ -->
-      <fieldset class="mb-4">
-        <legend class="font-semibold mb-1">Component</legend>
-        <label><input name="comp" type="radio" value="0" checked> σ<sub>xx</sub></label>
-        <label><input name="comp" type="radio" value="1"> σ<sub>yy</sub></label>
-        <label><input name="comp" type="radio" value="2"> τ<sub>xy</sub></label>
-      </fieldset>
+      <!-- Material -->
+      <div class="sidebar-box">
+        <div class="sidebar-box-header">Material</div>
+        <div class="sidebar-box-body sidebar-grid">
+          <label>μ<sub>M</sub> <input id="muM"    type="number" value="1.00" step="0.01"></label>
+          <label>μ<sub>P</sub> <input id="muP"    type="number" value="5.00" step="0.01"></label>
+          <label>κ<sub>M</sub> <input id="kappaM" type="number" value="1.33" step="0.01"></label>
+          <label>κ<sub>P</sub> <input id="kappaP" type="number" value="1.33" step="0.01"></label>
+        </div>
+      </div>
 
-      <!-- Colour map ------------------------------------------------- -->
-      <fieldset>
-        <legend class="font-semibold mb-1">Colour map</legend>
-        <select id="cmap" class="w-full">
-          <option value="0">Rainbow (blue → red)</option>
-          <option value="1">Jet (blue→cyan→yellow→red)</option>
-          <option value="2">Hot (black→red→yellow→white)</option>
-          <option value="3">Cool–Warm (blue ↔ white ↔ red)</option>
-          <option value="4">Inverted Cool–Warm (red ↔ white ↔ blue)</option>
-        </select>
-      </fieldset>
+      <!-- Stress table -->
+      <div class="sidebar-box">
+        <div class="sidebar-box-header">Stress</div>
+        <div class="sidebar-box-body p-0 overflow-hidden">
+          <table id="stressTable" class="w-full text-right text-xs border-collapse">
+            <thead class="bg-slate-100 border-b border-slate-300">
+              <tr>
+                <th class="text-left font-medium px-2 py-1"></th>
+                <th class="px-2 py-1">max σ</th>
+                <th class="px-2 py-1">min σ</th>
+                <th class="px-2 py-1">σ(x,y)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="border-b border-slate-200">
+                <td class="text-left px-2 py-1">
+                  <label class="flex items-center gap-1">
+                    <input name="comp" type="radio" value="0" checked> σₓₓ
+                  </label>
+                </td>
+                <td id="max_xx" class="px-2 py-1">–</td>
+                <td id="min_xx" class="px-2 py-1">–</td>
+                <td id="cur_xx" class="px-2 py-1">–</td>
+              </tr>
+              <tr class="border-b border-slate-200">
+                <td class="text-left px-2 py-1">
+                  <label class="flex items-center gap-1">
+                    <input name="comp" type="radio" value="1"> σᵧᵧ
+                  </label>
+                </td>
+                <td id="max_yy" class="px-2 py-1">–</td>
+                <td id="min_yy" class="px-2 py-1">–</td>
+                <td id="cur_yy" class="px-2 py-1">–</td>
+              </tr>
+              <tr>
+                <td class="text-left px-2 py-1">
+                  <label class="flex items-center gap-1">
+                    <input name="comp" type="radio" value="2"> τₓᵧ
+                  </label>
+                </td>
+                <td id="max_xy" class="px-2 py-1">–</td>
+                <td id="min_xy" class="px-2 py-1">–</td>
+                <td id="cur_xy" class="px-2 py-1">–</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
 
+      <!-- Colour map -->
+      <div class="sidebar-box">
+        <div class="sidebar-box-header">Colour map</div>
+        <div class="sidebar-box-body space-y-2">
+          <select id="cmap" class="sidebar-select w-full">
+            <option value="0">Rainbow</option>
+            <option value="1">Jet</option>
+            <option value="2">Hot</option>
+            <option value="3">Cool–Warm</option>
+            <option value="4">Inv Cool–Warm</option>
+          </select>
+          <canvas id="legendCanvas" class="h-[14px] w-full rounded"></canvas>
+          <div class="flex justify-between text-[11px] tabular-nums">
+            <span id="legendMin">–</span><span id="legendMax">–</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- PNG button -->
+      <button id="btnSave" class="w-full btn-primary">Save PNG</button>
+
+      <!-- Help -->
+      <details>
+        <summary class="cursor-pointer select-none mt-2 text-xs text-slate-500">
+          Controls / help
+        </summary>
+        <ul class="ml-4 list-disc text-[11px] space-y-1">
+          <li>Drag – pan</li>
+          <li>Wheel – zoom</li>
+          <li>Hover – probe stress</li>
+        </ul>
+      </details>
     </aside>
   </main>
+
+  <!-- footer -->
+  <footer class="py-4 text-center text-xs text-slate-500">
+    Stress-field visualiser · MIT Licence · © 2024 Your Lab
+  </footer>
+
+  <!-- TypeScript bundle (after DOM) -->
+  <script type="module" src="/src/main.ts"></script>
 </body>
 </html>
