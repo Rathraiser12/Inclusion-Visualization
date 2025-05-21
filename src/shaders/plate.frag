@@ -22,71 +22,61 @@ out vec4 fragColor;
 /* ── existing color functions ───────────────────────────────────────── */
 
 /* HSV → RGB (used by rainbow) */
+/* ── helpers ──────────────────────────────────────────────── */
 vec3 hsv2rgb(float h, float s, float v) {
   float c = v * s;
-  float x = c * (1.0 - abs(mod(h/60.0, 2.0) - 1.0));
+  float h6 = h / 60.0;                 /* 0..6 */
+  float x = c * (1.0 - abs(mod(h6, 2.0) - 1.0));
   vec3 rgb;
-       if (h <  60.0) rgb = vec3(c, x, 0);
-  else if (h < 120.0) rgb = vec3(x, c, 0);
-  else if (h < 180.0) rgb = vec3(0, c, x);
-  else if (h < 240.0) rgb = vec3(0, x, c);
-  else if (h < 300.0) rgb = vec3(x, 0, c);
-  else                rgb = vec3(c, 0, x);
+
+  if      (h6 < 1.0) rgb = vec3(c, x, 0);
+  else if (h6 < 2.0) rgb = vec3(x, c, 0);
+  else if (h6 < 3.0) rgb = vec3(0, c, x);
+  else if (h6 < 4.0) rgb = vec3(0, x, c);
+  else if (h6 < 5.0) rgb = vec3(x, 0, c);
+  else               rgb = vec3(c, 0, x);
+
   return rgb + (v - c);
 }
 
-/* 0 – Rainbow (blue→red via HSV) */
+/* 0 – Rainbow (HSV hue 260°→20°, avoids oversaturated reds) */
 vec3 rainbow(float t) {
   t = clamp(t, 0.0, 1.0);
-  float h = 240.0 * (1.0 - t);
+  float h = 260.0 - 240.0 * t;   /* 260 → 20 deg */
   return hsv2rgb(h, 1.0, 1.0);
 }
 
-/* 1 – Jet */
-vec3 jet(float t) {
+/* 1 – Jet (black-free) */
+vec3 jet(float t)
+{
   t = clamp(t, 0.0, 1.0);
-  return vec3(
-    clamp(1.5 - abs(4.0*t - 3.0), 0.0, 1.0),
-    clamp(1.5 - abs(4.0*t - 2.0), 0.0, 1.0),
-    clamp(1.5 - abs(4.0*t - 1.0), 0.0, 1.0)
-  );
+  float r = clamp(1.5 - abs(4.0 * t - 3.0), 0.0, 1.0);
+  float g = clamp(1.5 - abs(4.0 * t - 2.0), 0.0, 1.0);
+  float b = clamp(1.5 - abs(4.0 * t - 1.0), 0.0, 1.0);
+  return vec3(r, g, b);
 }
 
-/* 2 – Hot */
+/* 2 – Hot (black→red→yellow→white, γ-correct) */
 vec3 hot(float t) {
   t = clamp(t, 0.0, 1.0);
-  if (t < 1.0/3.0)      return vec3(3.0*t, 0.0, 0.0);
-  else if (t < 2.0/3.0) return vec3(1.0, 3.0*(t - 1.0/3.0), 0.0);
-  else                  return vec3(1.0, 1.0, 3.0*(t - 2.0/3.0));
+  float r = min(1.0, 3.0 * t);
+  float g = t < 1.0/3.0 ? 0.0 : min(1.0, 3.0 * (t - 1.0/3.0));
+  float b = t < 2.0/3.0 ? 0.0 : 3.0 * (t - 2.0/3.0);
+  return vec3(r, g, b);
 }
 
-/* 3 – Cool–Warm: simple linear blend blue↔white↔red */
+/* 3 – Cool-Warm (blue↔white↔red) */
 vec3 coolWarm(float t) {
   t = clamp(t, 0.0, 1.0);
-  if (t < 0.5) {
-    // blue → white
-    float f = t / 0.5;
-    return mix(vec3(0.0, 0.0, 1.0), vec3(1.0), f);
-  } else {
-    // white → red
-    float f = (t - 0.5) / 0.5;
-    return mix(vec3(1.0), vec3(1.0, 0.0, 0.0), f);
-  }
+  return mix(vec3(0.23,0.30,0.75), vec3(0.86,0.87,0.91), t*2.0)
+       * step(t,0.5)
+       + mix(vec3(0.86,0.87,0.91), vec3(0.70,0.02,0.15), (t-0.5)*2.0)
+       * step(0.5,t);
 }
 
-/* 4 – Inverted Cool–Warm: red↔white↔blue */
-vec3 coolWarmInv(float t) {
-  t = clamp(t, 0.0, 1.0);
-  if (t < 0.5) {
-    // red → white
-    float f = t / 0.5;
-    return mix(vec3(1.0, 0.0, 0.0), vec3(1.0), f);
-  } else {
-    // white → blue
-    float f = (t - 0.5) / 0.5;
-    return mix(vec3(1.0), vec3(0.0, 0.0, 1.0), f);
-  }
-}
+/* 4 – Inverted Cool-Warm */
+vec3 coolWarmInv(float t) { return coolWarm(1.0 - t); }
+
 
 /* ── apply the selected colormap ────────────────────────────────────── */
 vec3 applyCMap(float v) {
