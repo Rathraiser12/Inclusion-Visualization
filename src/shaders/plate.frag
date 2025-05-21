@@ -3,7 +3,8 @@ precision highp float;
 
 /* ── uniforms ───────────────────────────────────────────────────────── */
 uniform float u_r0, u_lambda, u_S, u_beta;
-uniform float u_muM, u_muP, u_kappaM, u_kappaP;
+uniform float u_gamma;              /*  NEW  Γ = μM / μP  (μP=1) */
+uniform float u_kappaM, u_kappaP;
 
 /* 0→rainbow | 1→jet | 2→hot | 3→cool-warm | 4→inverted cool-warm */
 uniform int   u_cmap;
@@ -99,42 +100,43 @@ vec3 applyCMap(float v) {
 
 /* ── main shader body ───────────────────────────────────────────────── */
 void main() {
-  // NDC → world
+  /* screen → world */
   vec2 xy = vec2(v_ndc.x * u_aspect, v_ndc.y);
   xy = (xy + u_pan) / u_zoom;
 
-  float r  = length(xy),
-        th = atan(xy.y, xy.x);
+  float r = length(xy);
+  float th = atan(xy.y, xy.x);
 
-  // material constants
-  float sf = u_muM/u_muP;
-  float A  = (1.0+u_kappaM)/(2.0 + sf*(u_kappaP-1.0));
-  float B  = (1.0+u_kappaM)/(sf + u_kappaM);
+  /* material constants */
+  float sf = u_gamma;                                /* μM/μP directly */
+  float A  = (1.0 + u_kappaM) / (2.0 + sf * (u_kappaP - 1.0));
+  float B  = (1.0 + u_kappaM) / (sf + u_kappaM);
 
-  float S   = u_S,
-        lam = u_lambda,
-        c2b = cos(2.0*u_beta),
-        s2b = sin(2.0*u_beta);
+  float S   = u_S;
+  float lam = u_lambda;
+  float c2b = cos(2.0 * u_beta);
+  float s2b = sin(2.0 * u_beta);
 
   float sxx, syy, txy;
+
   if (r <= u_r0) {
     sxx = 0.5*S*((lam+1.0)*A + (lam-1.0)*B*c2b);
     syy = 0.5*S*((lam+1.0)*A - (lam-1.0)*B*c2b);
     txy = 0.5*S*(lam-1.0)*B*s2b;
   } else {
-    float rr2 = (u_r0*u_r0)/(r*r),
-          rr4 = rr2*rr2,
-          c2t = cos(2.0*th),
-          s2t = sin(2.0*th);
+    float rr2 = (u_r0*u_r0)/(r*r);
+    float rr4 = rr2*rr2;
+    float c2t = cos(2.0*th);
+    float s2t = sin(2.0*th);
 
     sxx = 0.5*S*(lam+1.0)*(1.0-(1.0-A)*rr2*c2t)
-         +0.5*S*(lam-1.0)*(c2b + (1.0-B)*(3.0*rr4*c2b - 4.0*rr2*cos(2.0*u_beta-th)*cos(th)));
+        + 0.5*S*(lam-1.0)*(c2b+(1.0-B)*(3.0*rr4*c2b-4.0*rr2*cos(2.0*u_beta-th)*cos(th)));
 
     syy = 0.5*S*(lam+1.0)*(1.0+(1.0-A)*rr2*c2t)
-         -0.5*S*(lam-1.0)*(c2b + (1.0-B)*(3.0*rr4*c2b + 4.0*rr2*cos(2.0*u_beta-th)*cos(th)));
+        - 0.5*S*(lam-1.0)*(c2b+(1.0-B)*(3.0*rr4*c2b+4.0*rr2*cos(2.0*u_beta-th)*cos(th)));
 
     txy = -0.5*S*(lam+1.0)*(1.0-A)*rr2*s2t
-          +0.5*S*(lam-1.0)*(s2b + (1.0-B)*(3.0*rr4*sin(2.0*th-2.0*u_beta) - 2.0*rr2*s2b));
+          +0.5*S*(lam-1.0)*(s2b + (1.0-B)*(3.0*rr4*sin(4.0*th-2.0*u_beta) - 2.0*rr2*s2b));
   }
 
   float val = (u_component==0)?sxx:(u_component==1)?syy:txy;

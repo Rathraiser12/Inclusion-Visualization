@@ -99,21 +99,20 @@ gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
 
 /* uniform handles */
 const U = {
-  r0: gl.getUniformLocation(prog, 'u_r0')!,
-  lambda: gl.getUniformLocation(prog, 'u_lambda')!,
-  beta: gl.getUniformLocation(prog, 'u_beta')!,
-  muM: gl.getUniformLocation(prog, 'u_muM')!,
-  muP: gl.getUniformLocation(prog, 'u_muP')!,
-  kM: gl.getUniformLocation(prog, 'u_kappaM')!,
-  kP: gl.getUniformLocation(prog, 'u_kappaP')!,
-  S: gl.getUniformLocation(prog, 'u_S')!,               // keep uniform, set = 1
-  comp: gl.getUniformLocation(prog, 'u_component')!,
-  cmap: gl.getUniformLocation(prog, 'u_cmap')!,
-  minV: gl.getUniformLocation(prog, 'u_minVal')!,
-  maxV: gl.getUniformLocation(prog, 'u_maxVal')!,
-  zoom: gl.getUniformLocation(prog, 'u_zoom')!,
-  pan: gl.getUniformLocation(prog, 'u_pan')!,
-  asp: gl.getUniformLocation(prog, 'u_aspect')!,
+  r0:      gl.getUniformLocation(prog, 'u_r0')!,
+  lambda:  gl.getUniformLocation(prog, 'u_lambda')!,
+  beta:    gl.getUniformLocation(prog, 'u_beta')!,
+  gamma:   gl.getUniformLocation(prog, 'u_gamma')!,   //  NEW
+  kM:      gl.getUniformLocation(prog, 'u_kappaM')!,
+  kP:      gl.getUniformLocation(prog, 'u_kappaP')!,
+  S:       gl.getUniformLocation(prog, 'u_S')!,
+  comp:    gl.getUniformLocation(prog, 'u_component')!,
+  cmap:    gl.getUniformLocation(prog, 'u_cmap')!,
+  minV:    gl.getUniformLocation(prog, 'u_minVal')!,
+  maxV:    gl.getUniformLocation(prog, 'u_maxVal')!,
+  zoom:    gl.getUniformLocation(prog, 'u_zoom')!,
+  pan:     gl.getUniformLocation(prog, 'u_pan')!,
+  asp:     gl.getUniformLocation(prog, 'u_aspect')!,
 };
 
 /* utils */
@@ -126,17 +125,14 @@ const kappa = (nu: number, plane: 'strain' | 'stress') =>
 
 /* derived material constants */
 function material() {
-  const rho = Math.max(0.1, num(inputs.rho, DEF.rho)); // keep >0
-  const nuM = clampNu(num(inputs.nuM, DEF.nuM));
-  const nuP = clampNu(num(inputs.nuP, DEF.nuP));
-  const plane = [...inputs.plane].find((r) => r.checked)!
-    .value as 'strain' | 'stress';
+  const gamma = Math.max(0, num(inputs.rho, DEF.rho));  // allow Γ = 0
+  const nuM   = clampNu(num(inputs.nuM, DEF.nuM));
+  const nuP   = clampNu(num(inputs.nuP, DEF.nuP));
+  const plane = [...inputs.plane].find(r => r.checked)!.value as 'strain'|'stress';
 
-  const muP = 1;
-  const muM = rho;
   const kM = kappa(nuM, plane);
   const kP = kappa(nuP, plane);
-  return { muM, muP, kM, kP, sf: muM / muP };
+  return { gamma, kM, kP };
 }
 
 /* ── pan / zoom ─────────────────────────────────────────────── */
@@ -185,14 +181,15 @@ resize();
 
 /* analytic stress (uses derived material constants) */
 function analyticStressAt(x: number, y: number) {
-  const { muM, muP, kM, kP, sf } = material();
+  const { gamma, kM, kP } = material();
   const λ = num(inputs.lambda, DEF.lambda);
-  const β = num(inputs.beta, DEF.beta) * Math.PI / 180;
-  const r0 = num(inputs.r0, DEF.r0);
-  const S = 1; // fixed
+  const β = num(inputs.beta,   DEF.beta) * Math.PI / 180;
+  const r0= num(inputs.r0,     DEF.r0);
+  const S = 1;
 
-  const A = (1 + kM) / (2 + sf * (kP - 1));
-  const B = (1 + kM) / (sf + kM);
+  const sf = gamma;                       // μM/μP directly
+  const A  = (1 + kM) / (2 + sf * (kP - 1));
+  const B  = (1 + kM) / (sf + kM);
   const c2β = Math.cos(2 * β),
     s2β = Math.sin(2 * β);
 
@@ -226,7 +223,7 @@ function analyticStressAt(x: number, y: number) {
       0.5 *
         S *
         (λ - 1) *
-        (s2β + (1 - B) * (3 * rr4 * Math.sin(2 * θ - 2 * β) - 2 * rr2 * s2β));
+        (s2β + (1 - B) * (3 * rr4 * Math.sin(4 * θ - 2 * β) - 2 * rr2 * s2β));
   }
   return [σxx, σyy, τxy] as const;
 }
@@ -371,24 +368,25 @@ function drawLegend(min: number, max: number) {
 
 /* ── uniform update & draw ───────────────────────────────────── */
 function updateUniforms() {
-  const { muM, muP, kM, kP } = material();
+  const { gamma, kM, kP } = material();
   const [vmin, vmax] = viewExtremes();
 
   gl.uniform1f(U.minV, vmin);
   gl.uniform1f(U.maxV, vmax);
 
-  gl.uniform1f(U.r0, num(inputs.r0, DEF.r0));
+  gl.uniform1f(U.r0,     num(inputs.r0, DEF.r0));
   gl.uniform1f(U.lambda, num(inputs.lambda, DEF.lambda));
-  gl.uniform1f(U.beta, num(inputs.beta, DEF.beta) * Math.PI / 180);
-  gl.uniform1f(U.muM, muM);
-  gl.uniform1f(U.muP, muP);
-  gl.uniform1f(U.kM, kM);
-  gl.uniform1f(U.kP, kP);
-  gl.uniform1f(U.S, 1); // fixed far-field stress
-  gl.uniform1i(U.comp, +[...inputs.compRad].find((r) => r.checked)!.value);
+  gl.uniform1f(U.beta,   num(inputs.beta, DEF.beta) * Math.PI / 180);
+
+  gl.uniform1f(U.gamma,  gamma);          // NEW
+  gl.uniform1f(U.kM,     kM);
+  gl.uniform1f(U.kP,     kP);
+
+  gl.uniform1f(U.S, 1);
+  gl.uniform1i(U.comp, +[...inputs.compRad].find(r=>r.checked)!.value);
   gl.uniform1i(U.cmap, +inputs.cmap.value);
   gl.uniform1f(U.zoom, zoom);
-  gl.uniform2f(U.pan, panX, panY);
+  gl.uniform2f(U.pan,  panX, panY);
 
   drawLegend(vmin, vmax);
 }
