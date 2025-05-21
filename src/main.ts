@@ -37,6 +37,10 @@ const inputs = {
   compRad: document.querySelectorAll<HTMLInputElement>('input[name="comp"]'),
 };
 
+/* NEW: lock-range checkbox */
+const lockRange = $('lockRange') as HTMLInputElement;
+let lockedMin = 0, lockedMax = 0;        // persistent while locked
+
 /* stress-table cells */
 const cur_xx = $('cur_xx'), cur_yy = $('cur_yy'), cur_xy = $('cur_xy');
 const min_xx = $('min_xx'), max_xx = $('max_xx');
@@ -386,20 +390,36 @@ btnSave.addEventListener('click',()=>{
 
 /* ── render loop ───────────────────────────────────────────────── */
 function draw(){
-  const comp=+[...inputs.compRad].find(r=>r.checked)!.value;
-  const [vmin,vmax]=gpuMinMax(comp);
+  const comp = +[...inputs.compRad].find(r=>r.checked)!.value;
+  let [vmin, vmax] = gpuMinMax(comp);
 
-  pushFinalUniforms(vmin,vmax);
-  drawLegend(vmin,vmax);
+  /* -------- range-lock behaviour -------------------------------- */
+  if (lockRange.checked) {
+    if (lockedMin === lockedMax) {          // first frame after tick
+      lockedMin = vmin; lockedMax = vmax;
+    }
+    vmin = lockedMin; vmax = lockedMax;
+  } else {
+    lockedMin = lockedMax = 0;              // reset when unlocked
+  }
 
-  gl.bindFramebuffer(gl.FRAMEBUFFER,null);
-  gl.viewport(0,0,canvas.width,canvas.height);
-  gl.drawArrays(gl.TRIANGLES,0,6);
+  pushFinalUniforms(vmin, vmax);
+  drawLegend(vmin, vmax);
+
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  gl.viewport(0, 0, canvas.width, canvas.height);
+  gl.drawArrays(gl.TRIANGLES, 0, 6);
 
   requestAnimationFrame(draw);
 }
-updateGlobalExtremesDisplay(); draw();
 
+/* listeners: whenever user un-ticks the box, refresh immediately */
+lockRange.addEventListener('input', ()=>{ lockedMin=lockedMax=0; });
+
+/* … keep the rest of your event listeners, resets, PNG save,      */
+/* mouse-probe, analyticStressAt, etc., exactly as before …        */
+
+updateGlobalExtremesDisplay(); draw();
 /* ── mouse probe (analytic CPU) ─────────────────────────────────── */
 function analyticStressAt(x:number,y:number){
   const {gamma,kM,kP}=material();
