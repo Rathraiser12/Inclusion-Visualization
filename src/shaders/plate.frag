@@ -14,7 +14,7 @@ uniform float u_minVal, u_maxVal;
 uniform float u_zoom;
 uniform vec2  u_pan;
 uniform float u_aspect;
-
+uniform int u_hole;
 /* ── varyings ────────────────────────────────────────────────────────── */
 in  vec2 v_ndc;
 out vec4 fragColor;
@@ -98,9 +98,15 @@ void main() {
   float th = atan(xy.y, xy.x);
 
   /* material constants */
-  float sf = u_gamma;                                /* μM/μP directly */
-  float A  = (1.0 + u_kappaM) / (2.0 + sf * (u_kappaP - 1.0));
-  float B  = (1.0 + u_kappaM) / (sf + u_kappaM);
+  float sf = u_gamma;    
+  float A, B;                            /* μM/μP directly */
+ if(u_hole == 1){
+  A = 0.0;
+  B = 0.0;
+}else{
+  A = (1.0 + u_kappaM) / (2.0 + u_gamma * (u_kappaP - 1.0));
+  B = (1.0 + u_kappaM) / (u_gamma + u_kappaM);
+}
 
   float S   = u_S;
   float lam = u_lambda;

@@ -1,14 +1,14 @@
 /* src/main.ts – Stress-field visualiser (MIT, 2025)
-   ──────────────────────────────────────────────────────────────
-   UI: r0, λ, β | Γ | νM, νP | plane-(strain|stress)
+   ─────────────────────────────────────────────────────────────
+   UI: r0, λ, β | Γ | νM, νP | plane-(strain|stress) | incKind
    Far-field stress S ≡ 1
-   Now with GPU-side min/max reduction (no CPU loops)
+   GPU-side min/max reduction (no CPU loops)
    ---------------------------------------------------------------- */
 
-import vertSrc        from './shaders/plate.vert?raw';
-import fragSrc        from './shaders/plate.frag?raw';
-import stressRGSrc    from './shaders/stressRG.frag?raw';       // NEW
-import reduceFragSrc  from './shaders/reduceMinMax.frag?raw';   // NEW
+import vertSrc       from './shaders/plate.vert?raw';
+import fragSrc       from './shaders/plate.frag?raw';
+import stressRGSrc   from './shaders/stressRG.frag?raw';
+import reduceFragSrc from './shaders/reduceMinMax.frag?raw';
 
 /* ── defaults ─────────────────────────────────────────────────── */
 const DEF = {
@@ -17,14 +17,14 @@ const DEF = {
   plane: 'strain' as 'strain' | 'stress',
 };
 
-/* ── tiny helpers ─────────────────────────────────────────────── */
+/* ── helpers ──────────────────────────────────────────────────── */
 const $ = <T = HTMLElement>(id: string) =>
   document.getElementById(id)! as unknown as T;
 const clampNu = (v: number) => (v < 0 ? 0 : v > 0.5 ? 0.5 : v);
 const num = (el: HTMLInputElement, d = 0) =>
   (Number.isFinite(el.valueAsNumber) ? el.valueAsNumber : d);
 
-/* ── DOM handles ──────────────────────────────────────────────── */
+/* ── DOM handles ─────────────────────────────────────────────── */
 const inputs = {
   r0: $('r0') as HTMLInputElement,
   lambda: $('lambda') as HTMLInputElement,
@@ -36,10 +36,11 @@ const inputs = {
   cmap: $('cmap') as HTMLSelectElement,
   compRad: document.querySelectorAll<HTMLInputElement>('input[name="comp"]'),
 };
+const holeChk = $('holeChk') as HTMLInputElement;
 
-/* NEW: lock-range checkbox */
+/* lock-range checkbox */
 const lockRange = $('lockRange') as HTMLInputElement;
-let lockedMin = 0, lockedMax = 0;        // persistent while locked
+let lockedMin = 0, lockedMax = 0;
 
 /* stress-table cells */
 const cur_xx = $('cur_xx'), cur_yy = $('cur_yy'), cur_xy = $('cur_xy');
@@ -58,21 +59,22 @@ const btnSave   = $('btnSave')   as HTMLButtonElement;
 const resetGeom = $('resetGeom') as HTMLButtonElement;
 const resetMat  = $('resetMat')  as HTMLButtonElement;
 
+/* inclusion-kind flag */
+let holeMode = false;
+
 /* ── WebGL bootstrap ─────────────────────────────────────────── */
 const canvas = $('glCanvas') as HTMLCanvasElement;
 const glTmp  = canvas.getContext('webgl2');
 if (!glTmp) throw new Error('WebGL2 not supported');
 const gl = glTmp as WebGL2RenderingContext;
 
-/* need EXT_color_buffer_float for RG32F reductions */
 if (!gl.getExtension('EXT_color_buffer_float'))
-  throw new Error('EXT_color_buffer_float required for GPU reduction');
+  throw new Error('EXT_color_buffer_float required');
 
-/* compile / link helpers */
+/* compile-/-link helpers */
 function compile(type: number, src: string) {
   const sh = gl.createShader(type)!;
-  gl.shaderSource(sh, src);
-  gl.compileShader(sh);
+  gl.shaderSource(sh, src);  gl.compileShader(sh);
   if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS))
     throw new Error(gl.getShaderInfoLog(sh) ?? 'shader error');
   return sh;
@@ -88,24 +90,22 @@ function link(vs: string, fs: string) {
 }
 
 /* programs */
-const finalProg  = link(vertSrc, fragSrc);      // colour & mapping
-const stressProg = link(vertSrc, stressRGSrc);  // value → RG
-const reduceProg = link(vertSrc, reduceFragSrc);// 4→1 min/max
+const finalProg  = link(vertSrc, fragSrc);
+const stressProg = link(vertSrc, stressRGSrc);
+const reduceProg = link(vertSrc, reduceFragSrc);
 
-/* fullscreen quad VAO */
+/* fullscreen quad */
 const vao = gl.createVertexArray()!;
 gl.bindVertexArray(vao);
 const vbo = gl.createBuffer()!;
 gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
-gl.bufferData(
-  gl.ARRAY_BUFFER,
-  new Float32Array([-1,-1, 1,-1, -1,1, -1,1, 1,-1, 1,1]),
-  gl.STATIC_DRAW
-);
+gl.bufferData(gl.ARRAY_BUFFER,
+  new Float32Array([-1,-1, 1,-1, -1,1,  -1,1, 1,-1, 1,1]),
+  gl.STATIC_DRAW);
 gl.enableVertexAttribArray(0);
 gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
 
-/* ── uniform locations – FINAL pass ───────────────────────────── */
+/* ── uniform locations ───────────────────────────────────────── */
 const UF = {
   r0:     gl.getUniformLocation(finalProg,'u_r0')!,
   lambda: gl.getUniformLocation(finalProg,'u_lambda')!,
@@ -121,128 +121,124 @@ const UF = {
   zoom:   gl.getUniformLocation(finalProg,'u_zoom')!,
   pan:    gl.getUniformLocation(finalProg,'u_pan')!,
   asp:    gl.getUniformLocation(finalProg,'u_aspect')!,
+  hole:   gl.getUniformLocation(finalProg,'u_hole')!,
 };
-
-/* ── uniform locations – STRESS & REDUCE shaders ───────────────── */
-const US = {                           /* stressRG.frag */
-  r0:gl.getUniformLocation(stressProg,'u_r0')!,
-  lambda:gl.getUniformLocation(stressProg,'u_lambda')!,
-  beta:gl.getUniformLocation(stressProg,'u_beta')!,
-  gamma:gl.getUniformLocation(stressProg,'u_gamma')!,
-  kM:gl.getUniformLocation(stressProg,'u_kappaM')!,
-  kP:gl.getUniformLocation(stressProg,'u_kappaP')!,
-  S:gl.getUniformLocation(stressProg,'u_S')!,
-  comp:gl.getUniformLocation(stressProg,'u_component')!,
-  zoom:gl.getUniformLocation(stressProg,'u_zoom')!,
-  pan:gl.getUniformLocation(stressProg,'u_pan')!,
-  asp:gl.getUniformLocation(stressProg,'u_aspect')!,
+const US = {
+  r0:     gl.getUniformLocation(stressProg,'u_r0')!,
+  lambda: gl.getUniformLocation(stressProg,'u_lambda')!,
+  beta:   gl.getUniformLocation(stressProg,'u_beta')!,
+  gamma:  gl.getUniformLocation(stressProg,'u_gamma')!,
+  kM:     gl.getUniformLocation(stressProg,'u_kappaM')!,
+  kP:     gl.getUniformLocation(stressProg,'u_kappaP')!,
+  S:      gl.getUniformLocation(stressProg,'u_S')!,
+  comp:   gl.getUniformLocation(stressProg,'u_component')!,
+  zoom:   gl.getUniformLocation(stressProg,'u_zoom')!,
+  pan:    gl.getUniformLocation(stressProg,'u_pan')!,
+  asp:    gl.getUniformLocation(stressProg,'u_aspect')!,
+  hole:   gl.getUniformLocation(stressProg,'u_hole')!,
 };
-const UR = {                           /* reduceMinMax.frag */
-  src:gl.getUniformLocation(reduceProg,'u_src')!,
-  step:gl.getUniformLocation(reduceProg,'u_step')!,
+const UR = {
+  src:  gl.getUniformLocation(reduceProg,'u_src')!,
+  step: gl.getUniformLocation(reduceProg,'u_step')!,
 };
 
 /* κ(ν) */
-const kappa = (nu:number,plane:'strain'|'stress') =>
-  plane==='strain' ? 3-4*nu : (3-nu)/(1+nu);
+const kappa = (ν:number,pl:'strain'|'stress') =>
+  pl==='strain' ? 3-4*ν : (3-ν)/(1+ν);
 
-/* current material parameters */
+/* material parameters */
 function material(){
-  const gamma = Math.max(0, num(inputs.rho, DEF.rho));
-  const nuM   = clampNu(num(inputs.nuM, DEF.nuM));
-  const nuP   = clampNu(num(inputs.nuP, DEF.nuP));
-  const plane = [...inputs.plane]
-                .find(r=>r.checked)!.value as 'strain'|'stress';
-  return { gamma, kM:kappa(nuM,plane), kP:kappa(nuP,plane) };
+  const γ   = Math.max(0, num(inputs.rho, DEF.rho));
+  const νM  = clampNu(num(inputs.nuM, DEF.nuM));
+  const νP  = clampNu(num(inputs.nuP, DEF.nuP));
+  const pl  = [...inputs.plane].find(r=>r.checked)!.value as 'strain'|'stress';
+  return { γ, kM:kappa(νM,pl), kP:kappa(νP,pl) };
 }
 
-/* ── GPU reduction pyramid (256×256 → 1×1) ─────────────────────── */
-interface Level { tex:WebGLTexture; fbo:WebGLFramebuffer; w:number; h:number }
-const levels:Level[] = [];
-let w=1000, h=1000;
+/* ── GPU reduction pyramid ───────────────────────────────────── */
+interface Level{ tex:WebGLTexture; fbo:WebGLFramebuffer; w:number; h:number }
+const levels: Level[] = [];
+let w = 1000, h = 1000;
 for(;;){
-  const tex=gl.createTexture()!;
-  gl.bindTexture(gl.TEXTURE_2D,tex);
+  const tex = gl.createTexture()!;
+  gl.bindTexture(gl.TEXTURE_2D, tex);
   gl.texImage2D(gl.TEXTURE_2D,0,gl.RG32F,w,h,0,gl.RG,gl.FLOAT,null);
   gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);
   gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);
-
-  const fbo=gl.createFramebuffer()!;
+  const fbo = gl.createFramebuffer()!;
   gl.bindFramebuffer(gl.FRAMEBUFFER,fbo);
   gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,
                           gl.TEXTURE_2D,tex,0);
   levels.push({tex,fbo,w,h});
-  if(w===1 && h===1) break;
-  w=Math.max(1,w>>1); h=Math.max(1,h>>1);
+  if(w===1&&h===1) break;
+  w = Math.max(1,w>>1);  h = Math.max(1,h>>1);
 }
 gl.bindFramebuffer(gl.FRAMEBUFFER,null);
 gl.bindTexture(gl.TEXTURE_2D,null);
 
-/* ── pan / zoom ─────────────────────────────────────────────────── */
+/* ── pan / zoom ─────────────────────────────────────────────── */
 let zoom=1, panX=0, panY=0, dragging=false, lastX=0, lastY=0;
-canvas.addEventListener('mousedown',e=>{
-  dragging=true; lastX=e.clientX; lastY=e.clientY;
-});
+canvas.addEventListener('mousedown',e=>{ dragging=true; lastX=e.clientX; lastY=e.clientY; });
 window.addEventListener('mouseup',()=>dragging=false);
 window.addEventListener('mousemove',e=>{
   if(!dragging) return;
-  const asp=canvas.width/canvas.height;
+  const asp = canvas.width/canvas.height;
   panX -= (e.clientX-lastX)/canvas.height*2*asp/zoom;
   panY += (e.clientY-lastY)/canvas.height*2/zoom;
   lastX=e.clientX; lastY=e.clientY;
 });
 canvas.addEventListener('wheel',e=>{
   e.preventDefault();
-  zoom*= e.deltaY>0?1.1:0.9;
+  zoom *= e.deltaY>0?1.1:0.9;
 },{passive:false});
 
-/* dynamic resize */
+/* resize */
 function resize(){
   const dpr=window.devicePixelRatio||1;
-  canvas.width = canvas.clientWidth * dpr;
-  canvas.height= canvas.clientHeight* dpr;
+  canvas.width  = canvas.clientWidth * dpr;
+  canvas.height = canvas.clientHeight* dpr;
   gl.viewport(0,0,canvas.width,canvas.height);
 }
 window.addEventListener('resize',resize); resize();
 
-/* ── GPU min / max for a stress component (0,1,2) ──────────────── */
+/* ── GPU min/max for component ─────────────────────────────── */
 function gpuMinMax(comp:number):[number,number]{
-  const {gamma,kM,kP}=material();
+  const {γ,kM,kP}=material();
 
-  /* pass 0 : stress → root level */
+  /* pass 0: analytic stress → RG32F */
   const root=levels[0];
   gl.bindFramebuffer(gl.FRAMEBUFFER,root.fbo);
   gl.viewport(0,0,root.w,root.h);
   gl.useProgram(stressProg);
 
-  gl.uniform1f(US.r0, num(inputs.r0,DEF.r0));
+  gl.uniform1f(US.r0,     num(inputs.r0,DEF.r0));
   gl.uniform1f(US.lambda, num(inputs.lambda,DEF.lambda));
-  gl.uniform1f(US.beta, num(inputs.beta,DEF.beta)*Math.PI/180);
-  gl.uniform1f(US.gamma,gamma);
-  gl.uniform1f(US.kM,kM); gl.uniform1f(US.kP,kP);
+  gl.uniform1f(US.beta,   num(inputs.beta,DEF.beta)*Math.PI/180);
+  gl.uniform1f(US.gamma,  γ);
+  gl.uniform1f(US.kM, kM);  gl.uniform1f(US.kP, kP);
   gl.uniform1f(US.S,1);
   gl.uniform1i(US.comp, comp);
   gl.uniform1f(US.zoom,zoom);
   gl.uniform2f(US.pan,panX,panY);
   gl.uniform1f(US.asp,canvas.width/canvas.height);
+  gl.uniform1i(US.hole, holeMode ? 1 : 0);
 
   gl.drawArrays(gl.TRIANGLES,0,6);
 
   /* reduction passes */
   gl.useProgram(reduceProg);
-  for(let i=1;i<levels.length;++i){
+  for(let i=1;i<levels.length;i++){
     const src=levels[i-1], dst=levels[i];
     gl.bindFramebuffer(gl.FRAMEBUFFER,dst.fbo);
     gl.viewport(0,0,dst.w,dst.h);
-    gl.activeTexture(gl.TEXTURE0);
-    gl.bindTexture(gl.TEXTURE_2D,src.tex);
+    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D,src.tex);
     gl.uniform1i(UR.src,0);
     gl.uniform2f(UR.step,1/src.w,1/src.h);
     gl.drawArrays(gl.TRIANGLES,0,6);
   }
 
   /* read 1×1 RG */
-  const last=levels[levels.length-1];
+  const last = levels[levels.length - 1];
   gl.bindFramebuffer(gl.FRAMEBUFFER,last.fbo);
   const buf=new Float32Array(2);
   gl.readPixels(0,0,1,1,gl.RG,gl.FLOAT,buf);
@@ -250,7 +246,7 @@ function gpuMinMax(comp:number):[number,number]{
   return [buf[0],buf[1]];
 }
 
-/* ── colour-map helpers (unchanged except jet fix) ─────────────── */
+/* ── colour-map helpers (unchanged) ─────────────────────────── */
 type RGB=[number,number,number];
 const clamp01=(x:number)=>Math.max(0,Math.min(1,x));
 function hsv2rgb(h:number,s=1,v=1):RGB{
@@ -264,8 +260,7 @@ function hsv2rgb(h:number,s=1,v=1):RGB{
   else         { r=c; b=x; }
   return [r+m,g+m,b+m];
 }
-const cmapRainbow = (t:number):RGB =>
-  hsv2rgb(260-240*clamp01(t));
+const cmapRainbow=(t:number):RGB=>hsv2rgb(260-240*clamp01(t));
 function cmapJet(t:number):RGB{
   t=clamp01(t);
   const r=clamp01(1.5-Math.abs(4*t-3));
@@ -285,11 +280,9 @@ function cmapCoolWarm(t:number):RGB{
   const cold:[number,number,number]=[0.23,0.30,0.75];
   const white:[number,number,number]=[0.86,0.87,0.91];
   const warm:[number,number,number]=[0.70,0.02,0.15];
-  if(t<0.5){
-    const f=t*2; return cold.map((c,i)=>c+(white[i]-c)*f) as RGB;
-  }else{
-    const f=(t-0.5)*2; return white.map((c,i)=>c+(warm[i]-c)*f) as RGB;
-  }
+  return t<0.5
+    ? cold.map((c,i)=>c+(white[i]-c)*t*2) as RGB
+    : white.map((c,i)=>c+(warm[i]-c)*(t-0.5)*2) as RGB;
 }
 function mapColour(t:number):RGB{
   switch(+inputs.cmap.value){
@@ -308,11 +301,12 @@ function drawLegend(min:number,max:number){
     legendCanvas.width=w; legendCanvas.height=h;
   }
   const img=legendCtx.createImageData(w,h);
-  for(let x=0;x<w;++x){
+  for(let x=0;x<w;x++){
     const t=x/(w-1), [r,g,b]=mapColour(t);
-    for(let y=0;y<h;++y){
+    for(let y=0;y<h;y++){
       const i=(y*w+x)*4;
-      img.data[i]=r*255; img.data[i+1]=g*255; img.data[i+2]=b*255; img.data[i+3]=255;
+      img.data[i]=r*255; img.data[i+1]=g*255;
+      img.data[i+2]=b*255; img.data[i+3]=255;
     }
   }
   legendCtx.putImageData(img,0,0);
@@ -322,14 +316,14 @@ function drawLegend(min:number,max:number){
 
 /* push uniforms for final colour pass */
 function pushFinalUniforms(vmin:number,vmax:number){
-  const {gamma,kM,kP}=material();
+  const {γ,kM,kP}=material();
   gl.useProgram(finalProg);
 
   gl.uniform1f(UF.minV,vmin); gl.uniform1f(UF.maxV,vmax);
   gl.uniform1f(UF.r0,num(inputs.r0,DEF.r0));
   gl.uniform1f(UF.lambda,num(inputs.lambda,DEF.lambda));
   gl.uniform1f(UF.beta,num(inputs.beta,DEF.beta)*Math.PI/180);
-  gl.uniform1f(UF.gamma,gamma);
+  gl.uniform1f(UF.gamma,γ);
   gl.uniform1f(UF.kM,kM); gl.uniform1f(UF.kP,kP);
   gl.uniform1f(UF.S,1);
   gl.uniform1i(UF.comp,+[...inputs.compRad].find(r=>r.checked)!.value);
@@ -337,9 +331,10 @@ function pushFinalUniforms(vmin:number,vmax:number){
   gl.uniform1f(UF.zoom,zoom);
   gl.uniform2f(UF.pan,panX,panY);
   gl.uniform1f(UF.asp,canvas.width/canvas.height);
+  gl.uniform1i(UF.hole, holeMode ? 1 : 0);
 }
 
-/* global table update (3× gpuMinMax) */
+/* update global min/max table */
 function updateGlobalExtremesDisplay(){
   const [mnxx,mxxx]=gpuMinMax(0);
   const [mnyy,mxyy]=gpuMinMax(1);
@@ -349,7 +344,7 @@ function updateGlobalExtremesDisplay(){
   min_xy.textContent=mnxy.toFixed(2); max_xy.textContent=mxxy.toFixed(2);
 }
 
-/* listeners (no CPU loops now) */
+/* generic listeners */
 (Object.values(inputs) as (HTMLInputElement|HTMLSelectElement|NodeListOf<HTMLInputElement>)[])
 .forEach(el=>{
   if(el instanceof NodeList)
@@ -364,6 +359,29 @@ function updateGlobalExtremesDisplay(){
     });
 });
 
+/* inclusion-kind checkbox */
+holeChk.addEventListener('input', () => {
+  holeMode = holeChk.checked;
+
+  if (holeMode) {
+    inputs.rho.value = '∞';   // visual cue
+    inputs.nuP.value = '0';
+    inputs.nuP.disabled = true;
+  } else {
+    inputs.rho.value = DEF.rho.toString();
+    inputs.nuP.value = DEF.nuP.toString();
+    inputs.nuP.disabled = false;
+  }
+  updateGlobalExtremesDisplay();
+});
+
+inputs.rho.addEventListener('input', () => {
+  holeMode = false; holeChk.checked = false;
+});
+inputs.nuP.addEventListener('input', () => {
+  holeMode = false; holeChk.checked = false;
+});
+
 /* reset helpers */
 const resetGeometryValues=()=>{
   inputs.r0.value=DEF.r0.toString();
@@ -374,13 +392,14 @@ const resetMaterialValues=()=>{
   inputs.rho.value=DEF.rho.toString();
   inputs.nuM.value=DEF.nuM.toString();
   inputs.nuP.value=DEF.nuP.toString();
+  inputs.nuP.disabled=false;
+   holeMode = false; holeChk.checked = false;
   [...inputs.plane].forEach(r=>r.checked=r.value===DEF.plane);
 };
-resetGeometryValues(); resetMaterialValues();
-resetGeom.addEventListener('click',()=>{resetGeometryValues();updateGlobalExtremesDisplay();});
-resetMat .addEventListener('click',()=>{resetMaterialValues();updateGlobalExtremesDisplay();});
+/* buttons */
+resetGeom.addEventListener('click',()=>{ resetGeometryValues(); updateGlobalExtremesDisplay(); });
+resetMat .addEventListener('click',()=>{ resetMaterialValues();  updateGlobalExtremesDisplay(); });
 
-/* PNG save */
 btnSave.addEventListener('click',()=>{
   const a=document.createElement('a');
   a.download='stress-field.png';
@@ -388,48 +407,38 @@ btnSave.addEventListener('click',()=>{
   a.click();
 });
 
-/* ── render loop ───────────────────────────────────────────────── */
+/* ── render loop ─────────────────────────────────────────────── */
 function draw(){
   const comp = +[...inputs.compRad].find(r=>r.checked)!.value;
-  let [vmin, vmax] = gpuMinMax(comp);
+  let [vmin,vmax]=gpuMinMax(comp);
 
-  /* -------- range-lock behaviour -------------------------------- */
-  if (lockRange.checked) {
-    if (lockedMin === lockedMax) {          // first frame after tick
-      lockedMin = vmin; lockedMax = vmax;
-    }
-    vmin = lockedMin; vmax = lockedMax;
-  } else {
-    lockedMin = lockedMax = 0;              // reset when unlocked
-  }
+  /* lock-range */
+  if(lockRange.checked){
+    if(lockedMin===lockedMax){ lockedMin=vmin; lockedMax=vmax; }
+    vmin=lockedMin; vmax=lockedMax;
+  }else lockedMin=lockedMax=0;
 
-  pushFinalUniforms(vmin, vmax);
-  drawLegend(vmin, vmax);
+  pushFinalUniforms(vmin,vmax);
+  drawLegend(vmin,vmax);
 
-  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-  gl.viewport(0, 0, canvas.width, canvas.height);
-  gl.drawArrays(gl.TRIANGLES, 0, 6);
+  gl.bindFramebuffer(gl.FRAMEBUFFER,null);
+  gl.viewport(0,0,canvas.width,canvas.height);
+  gl.drawArrays(gl.TRIANGLES,0,6);
 
   requestAnimationFrame(draw);
 }
+lockRange.addEventListener('input',()=>{ lockedMin=lockedMax=0; });
 
-/* listeners: whenever user un-ticks the box, refresh immediately */
-lockRange.addEventListener('input', ()=>{ lockedMin=lockedMax=0; });
-
-/* … keep the rest of your event listeners, resets, PNG save,      */
-/* mouse-probe, analyticStressAt, etc., exactly as before …        */
-
-updateGlobalExtremesDisplay(); draw();
-/* ── mouse probe (analytic CPU) ─────────────────────────────────── */
+/* analytic probe */
 function analyticStressAt(x:number,y:number){
-  const {gamma,kM,kP}=material();
+  const {γ,kM,kP}=material();
   const λ=num(inputs.lambda,DEF.lambda);
   const β=num(inputs.beta,DEF.beta)*Math.PI/180;
   const r0=num(inputs.r0,DEF.r0);
   const S=1;
 
-  const A=(1+kM)/(2+gamma*(kP-1));
-  const B=(1+kM)/(gamma+kM);
+  const A = holeMode ? 0 : (1+kM)/(2+γ*(kP-1));
+  const B = holeMode ? 0 : (1+kM)/(γ+kM);
   const c2β=Math.cos(2*β), s2β=Math.sin(2*β);
 
   const r=Math.hypot(x,y), θ=Math.atan2(y,x);
@@ -440,8 +449,8 @@ function analyticStressAt(x:number,y:number){
     syy=0.5*S*((λ+1)*A-(λ-1)*B*c2β);
     txy=0.5*S*(λ-1)*B*s2β;
   }else{
-    const rr2=(r0*r0)/(r*r), rr4=rr2*rr2,
-          c2θ=Math.cos(2*θ), s2θ=Math.sin(2*θ);
+    const rr2=(r0*r0)/(r*r), rr4=rr2*rr2;
+    const c2θ=Math.cos(2*θ), s2θ=Math.sin(2*θ);
     sxx=0.5*S*(λ+1)*(1-(1-A)*rr2*c2θ)
        +0.5*S*(λ-1)*(c2β+(1-B)*(3*rr4*c2β-4*rr2*Math.cos(2*β-θ)*Math.cos(θ)));
     syy=0.5*S*(λ+1)*(1+(1-A)*rr2*c2θ)
@@ -463,3 +472,7 @@ canvas.addEventListener('mousemove',e=>{
   cur_yy.textContent=syy.toFixed(2);
   cur_xy.textContent=txy.toFixed(2);
 });
+
+/* kick off */
+resetGeometryValues(); resetMaterialValues();
+updateGlobalExtremesDisplay(); draw();

@@ -7,7 +7,7 @@ uniform float u_gamma, u_kappaM, u_kappaP;
 uniform int   u_component;              /* 0 σxx | 1 σyy | 2 τxy */
 uniform float u_zoom, u_aspect;
 uniform vec2  u_pan;
-
+uniform int u_hole;
 /* ---------- varyings --------------------------------------------- */
 in  vec2 v_ndc;
 layout(location = 0) out vec2 outRG;     /* R=min, G=max */
@@ -22,8 +22,14 @@ float analyticComponent(vec2 ndc)
   float r  = length(xy);
   float th = atan(xy.y, xy.x);
 
-  float A = (1.0 + u_kappaM) / (2.0 + u_gamma * (u_kappaP - 1.0));
-  float B = (1.0 + u_kappaM) / (u_gamma + u_kappaM);
+float A, B;
+if(u_hole == 1){
+  A = 0.0;
+  B = 0.0;
+}else{
+  A = (1.0 + u_kappaM) / (2.0 + u_gamma * (u_kappaP - 1.0));
+  B = (1.0 + u_kappaM) / (u_gamma + u_kappaM);
+}
 
   float S = u_S, lam = u_lambda;
   float c2b = cos(2.0 * u_beta);
