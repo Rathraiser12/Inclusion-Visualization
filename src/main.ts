@@ -10,7 +10,7 @@ import reduceFragSrc from './shaders/reduceMinMax.frag?raw';
 /* ── defaults ─────────────────────────────────────────────────── */
 const DEF = {
   r0: 0.25, lambda: 1, beta: 0,
-  rho: 0.1, nuM: 0.33, nuP: 0.33,
+  rho: 0.1, nuM: 0.17, nuP: 0.33,
   plane: 'strain' as 'strain' | 'stress',
 };
 
@@ -171,7 +171,13 @@ const kappa = (ν:number,pl:'strain'|'stress') =>
 
 /* material parameters */
 function material(){
-  const γ  = Math.max(0, num(inputs.rho, DEF.rho));
+   const raw = inputs.rho.value.trim();
+ const γ   = holeMode               // Γ is irrelevant in hole mode
+            ? DEF.rho              // (A = B = 0 anyway)
+             : ( () => {            // otherwise, parse the text box
+                 const g = parseFloat(raw);
+                 return Number.isFinite(g) && g >= 0 ? g : DEF.rho;
+               })();
   const νM = clampNu(num(inputs.nuM, DEF.nuM));
   const νP = clampNu(num(inputs.nuP, DEF.nuP));
   const pl = [...inputs.plane].find(r=>r.checked)!.value as 'strain'|'stress';
