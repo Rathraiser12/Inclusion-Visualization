@@ -7,9 +7,12 @@ import fragSrc       from './shaders/plate.frag?raw';
 import stressRGSrc   from './shaders/stressRG.frag?raw';
 import reduceFragSrc from './shaders/reduceMinMax.frag?raw';
 
+
+
 /* ── defaults ─────────────────────────────────────────────────── */
+const r0   = 0.25;
 const DEF = {
-  r0: 0.25, lambda: 1, beta: 0,
+  lambda: 0, beta: 0,
   rho: 0.1, nuM: 0.17, nuP: 0.33,
   plane: 'strain' as 'strain' | 'stress',
 };
@@ -24,7 +27,6 @@ const num = (el: HTMLInputElement, d = 0) =>
 /* ── DOM handles ─────────────────────────────────────────────── */
 const inputs = {
   /* geometry & load */
-  r0: $('r0') as HTMLInputElement,
   lambda: $('lambda') as HTMLInputElement,
   beta: $('beta') as HTMLInputElement,
   /* material */
@@ -37,12 +39,12 @@ const inputs = {
   compRad: document.querySelectorAll<HTMLInputElement>('input[name="comp"]'),
 };
 const holeChk   = $('holeChk')   as HTMLInputElement;
-const lockRange = $('lockRange') as HTMLInputElement;
 
-/* lock-range state */
-lockRange.checked = true;               // start ON
-let lockedMin = 0, lockedMax = 0;
-
+/* View widget */
+const viewX     = $('viewX')     as HTMLSpanElement;
+const viewY     = $('viewY')     as HTMLSpanElement;
+const viewZoom  = $('viewZoom')  as HTMLSpanElement;
+const viewReset = $('viewReset') as HTMLButtonElement;
 /* stress-table cells */
 const cur_xx = $('cur_xx'), cur_yy = $('cur_yy'), cur_xy = $('cur_xy');
 const min_xx = $('min_xx'), max_xx = $('max_xx');
@@ -63,27 +65,9 @@ const resetMat  = $('resetMat')  as HTMLButtonElement;
 /* inclusion kind flag */
 let holeMode = false;
 
-/* ── lock-range helper ───────────────────────────────────────── */
-function refreshAndRelockRange() {
-  /* 1 – unlock & clear cached range */
-  lockRange.checked = false;
-  lockedMin = lockedMax = 0;
 
-  /* 2 – immediate recompute for table/legend */
-  updateGlobalExtremesDisplay();
 
-  /* 3 – re-lock; next frame captures new limits */
-  lockRange.checked = true;
-}
 
-/* ── hook geometry & material inputs to the helper ───────────── */
-[
-  /* geometry + load */
-  inputs.r0, inputs.lambda, inputs.beta,
-  /* material */
-  inputs.rho, inputs.nuM, inputs.nuP,
-  ...inputs.plane
-].forEach(el => el.addEventListener('input', refreshAndRelockRange));
 
 /* ── WebGL bootstrap ─────────────────────────────────────────── */
 const canvas = $('glCanvas') as HTMLCanvasElement;
@@ -240,7 +224,7 @@ function gpuMinMax(comp:number):[number,number]{
   gl.viewport(0,0,root.w,root.h);
   gl.useProgram(stressProg);
 
-  gl.uniform1f(US.r0,     num(inputs.r0,DEF.r0));
+  gl.uniform1f(US.r0,r0);
   gl.uniform1f(US.lambda, num(inputs.lambda,DEF.lambda));
   gl.uniform1f(US.beta,   num(inputs.beta,DEF.beta)*Math.PI/180);
   gl.uniform1f(US.gamma,  γ);
@@ -349,7 +333,7 @@ function pushFinalUniforms(vmin:number,vmax:number){
   gl.useProgram(finalProg);
 
   gl.uniform1f(UF.minV,vmin); gl.uniform1f(UF.maxV,vmax);
-  gl.uniform1f(UF.r0,num(inputs.r0,DEF.r0));
+  gl.uniform1f(UF.r0,r0);
   gl.uniform1f(UF.lambda,num(inputs.lambda,DEF.lambda));
   gl.uniform1f(UF.beta,num(inputs.beta,DEF.beta)*Math.PI/180);
   gl.uniform1f(UF.gamma,γ);
@@ -385,7 +369,6 @@ holeChk.addEventListener('input', () => {
     inputs.nuP.value = DEF.nuP.toString();
     inputs.nuP.disabled = false;
   }
-  refreshAndRelockRange();
 });
 
 /* manual edits of Γ or νP exit hole mode */
@@ -394,7 +377,6 @@ inputs.nuP.addEventListener('input',()=>{ holeMode=false; holeChk.checked=false;
 
 /* reset helpers */
 const resetGeometryValues=()=>{
-  inputs.r0.value=DEF.r0.toString();
   inputs.lambda.value=DEF.lambda.toString();
   inputs.beta.value=DEF.beta.toString();
 };
@@ -410,11 +392,9 @@ const resetMaterialValues=()=>{
 /* buttons */
 resetGeom.addEventListener('click',()=>{
   resetGeometryValues();
-  refreshAndRelockRange();
 });
 resetMat.addEventListener('click',()=>{
   resetMaterialValues();
-  refreshAndRelockRange();
 });
 btnSave.addEventListener('click',()=>{
   const a=document.createElement('a');
@@ -422,16 +402,27 @@ btnSave.addEventListener('click',()=>{
   a.href=canvas.toDataURL('image/png');
   a.click();
 });
+function updateViewDisplay(){
+  viewX.textContent    = panX.toFixed(2);
+  viewY.textContent    = panY.toFixed(2);
+  viewZoom.textContent = zoom.toFixed(2);
+}
+function resetPanZoom(){
+  zoom = 1;
+  panX = 0;
+  panY = 0;
+  updateViewDisplay();
+}
+viewReset.addEventListener('click', resetPanZoom);
 
+/* Call updateViewDisplay() inside draw() each frame */
+updateViewDisplay();
 /* ── render loop ─────────────────────────────────────────────── */
 function draw(){
   const comp = +[...inputs.compRad].find(r=>r.checked)!.value;
   let [vmin,vmax]=gpuMinMax(comp);
 
-  if(lockRange.checked){
-    if(lockedMin===lockedMax){ lockedMin=vmin; lockedMax=vmax; }
-    vmin=lockedMin; vmax=lockedMax;
-  }else lockedMin=lockedMax=0;
+ 
 
   pushFinalUniforms(vmin,vmax);
   drawLegend(vmin,vmax);
@@ -442,14 +433,13 @@ function draw(){
 
   requestAnimationFrame(draw);
 }
-lockRange.addEventListener('input',()=>{ lockedMin=lockedMax=0; });
+
 
 /* analytic probe (matches shader pan/zoom) */
 function analyticStressAt(x:number,y:number){
   const {γ,kM,kP}=material();
   const λ=num(inputs.lambda,DEF.lambda);
   const β=num(inputs.beta,DEF.beta)*Math.PI/180;
-  const r0=num(inputs.r0,DEF.r0);
   const S=1;
 
   const A = holeMode ? 0 : (1+kM)/(2+γ*(kP-1));

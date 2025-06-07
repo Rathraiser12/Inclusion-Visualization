@@ -2,17 +2,17 @@
 <html lang="en" class="h-full scroll-smooth">
 <head>
   <meta charset="utf-8" />
-  <title>Stress-field visualiser</title>
+  <title>Stress‑field visualiser</title>
 
   <!-- Inter font -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 
-  <!-- Tailwind JIT CDN (dev only) -->
+  <!-- Tailwind JIT CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
 
-  <!-- Custom Tailwind CSS -->
+  <!-- Custom Tailwind helpers -->
   <style type="text/tailwindcss">
     body,html {@apply antialiased font-["Inter",sans-serif];}
 
@@ -21,21 +21,23 @@
     .box-h {@apply bg-slate-100 border-b border-slate-300 rounded-t-md
                    px-3 py-1 flex justify-between items-center
                    text-sm font-semibold text-slate-700;}
-    .box-b {@apply px-3 py-2;}         /* reduced vertical padding */
+    .box-b {@apply px-3 py-2;}
 
-    /* 4-column grid for two fields per row, minimal vertical gap */
+    /* 4‑column grid (two inputs per row) */
     .grid2x2 {@apply grid grid-cols-[auto_1fr_auto_1fr] gap-x-3 gap-y-1 items-center;}
 
     /* slim number inputs */
-    .numb   {@apply w-20 bg-white border border-slate-300 rounded
-                   px-2 py-1 text-right tabular-nums
-                   focus:outline-none focus:ring-2 focus:ring-sky-400;}
+    .numb {@apply w-20 bg-white border border-slate-300 rounded px-2 py-1
+                    text-right tabular-nums focus:outline-none focus:ring-2
+                    focus:ring-sky-400;}
 
     /* arrow columns */
-    .arrow-col {@apply hidden lg:flex flex-col justify-between text-2xl text-slate-500 select-none;}
+    .arrow-col {@apply hidden lg:flex flex-col justify-between
+                       text-2xl text-slate-500 select-none;}
 
-    /* primary button style */
-    .btn-primary {@apply rounded-md bg-sky-600 text-white py-1.5 hover:bg-sky-700 active:bg-sky-800;}
+    /* primary button */
+    .btn-primary {@apply rounded-md bg-sky-600 text-white py-1.5
+                           hover:bg-sky-700 active:bg-sky-800;}
   </style>
 </head>
 
@@ -46,26 +48,25 @@
     <h1 class="text-xl font-semibold">
       Infinite Plate With A Circular Inclusion Under Tension
     </h1>
-    <p class="text-xs text-slate-500">
-      (drag = pan · wheel = zoom)
-    </p>
+    <p class="text-xs text-slate-500">(drag = pan · wheel = zoom)</p>
   </header>
 
-  <!-- Main content -->
+  <!-- Main -->
   <main class="flex-1 flex justify-center items-center">
 
-    <!-- Left arrows -->
+    <!-- ← arrows -->
     <div class="arrow-col pr-2">
       <span>←</span><span>←</span><span>←</span><span>←</span><span>←</span>
       <span>←</span><span>←</span><span>←</span><span>←</span>
     </div>
 
-    <!-- Canvas section -->
-    <section class="relative bg-white ring-1 ring-slate-200" style="width:640px; height:640px;">
+    <!-- Canvas -->
+    <section class="relative bg-white ring-1 ring-slate-200"
+             style="width:640px; height:640px;">
       <canvas id="glCanvas" class="w-full h-full block"></canvas>
     </section>
 
-    <!-- Right arrows -->
+    <!-- → arrows -->
     <div class="arrow-col pl-2">
       <span>→</span><span>→</span><span>→</span><span>→</span><span>→</span>
       <span>→</span><span>→</span><span>→</span><span>→</span>
@@ -75,83 +76,99 @@
     <aside class="w-120 shrink-0 overflow-y-auto ml-6 bg-white/80 backdrop-blur-sm
                   shadow-2xl ring-1 ring-black/5 px-4 py-5 space-y-5">
 
-      <!-- Geometry & Material side-by-side -->
+      <!-- Geometry (left) + Material (right) -->
       <div class="flex space-x-4">
-        <!-- Geometry & load -->
-        <div class="box flex-1">
-          <div class="box-h">
-            <span>Geometry &amp; load</span>
-            <button id="resetGeom"
-                    class="rounded bg-slate-200 px-2 py-0.5 text-xs hover:bg-slate-300">
-              Reset
-            </button>
+
+        <!-- ── LEFT COLUMN ───────────────────────────────────── -->
+        <div class="flex flex-col space-y-4 basis-1/2">
+
+          <!-- Geometry & load -->
+          <div class="box">
+            <div class="box-h">
+              <span>Geometry&nbsp;&amp;&nbsp;load</span>
+              <div class="flex gap-1">
+                <button id="resetGeom"
+                        class="rounded bg-slate-200 px-2 py-0.5 text-xs
+                               hover:bg-slate-300">
+                  Reset
+                </button>
+              </div>
+            </div>
+            <div class="box-b grid2x2">
+              <label for="lambda">&lambda;</label>
+              <input id="lambda" class="numb" type="number"
+                     value="0.00" step="0.01">
+
+              <label for="beta">&beta;°</label>
+              <input id="beta"   class="numb" type="number"
+                     value="0" step="1">
+
+              <div></div>
+            </div>
           </div>
-          <div class="box-b grid2x2">
-            <label for="r0">r₀</label>
-            <input id="r0"     class="numb" type="number" value="0.25" step="0.01">
-
-            <label for="lambda">&lambda;</label>
-            <input id="lambda" class="numb" type="number" value="1.00" step="0.01">
-
-            <label for="beta">&beta;°</label>
-            <input id="beta"   class="numb" type="number" value="0"    step="1">
-
-            <div></div>
-          </div>
+    <!-- Mode -->
+      <div class="box">
+        <div class="box-h">Mode</div>
+        <div class="box-b flex items-center gap-4">
+          <label class="flex items-center gap-1">
+            <input name="plane" type="radio" value="strain" checked>
+            plane strain
+          </label>
+          <label class="flex items-center gap-1">
+            <input name="plane" type="radio" value="stress">
+            plane stress
+          </label>
         </div>
+      </div>
 
-        <!-- Material -->
+
+        </div><!-- /left column -->
+
+        <!-- ── RIGHT COLUMN (Material) ───────────────────────── -->
         <div class="box flex-1">
           <div class="box-h">
             <span>Material</span>
             <button id="resetMat"
-                    class="rounded bg-slate-200 px-2 py-0.5 text-xs hover:bg-slate-300">
+                    class="rounded bg-slate-200 px-2 py-0.5 text-xs
+                           hover:bg-slate-300">
               Reset
             </button>
           </div>
           <div class="box-b grid2x2">
+
             <label for="rho">&Gamma;</label>
-            <input id="rho"  class="numb" type="text" value="0.10"  placeholder="Γ e.g. 0.10 or ∞">
+            <input id="rho" class="numb" type="text"
+                   value="0.10" placeholder="Γ or ∞">
 
             <label for="nuM">&nu;<sub>M</sub></label>
-            <input id="nuM" class="numb" type="number" value="0.40" step="0.01" min="0" max="0.5">
+            <input id="nuM" class="numb" type="number"
+                   value="0.17" step="0.01" min="0" max="0.5">
 
             <label for="nuP">&nu;<sub>P</sub></label>
-            <input id="nuP" class="numb" type="number" value="0.33" step="0.01" min="0" max="0.5">
+            <input id="nuP" class="numb" type="number"
+                   value="0.33" step="0.01" min="0" max="0.5">
 
             <div></div>
-            <!-- NEW: single checkbox -->
-          <label class="col-span-4 mt-2 flex items-center gap-1 text-xs select-none">
-          <input id="holeChk" type="checkbox">
-               Inclusion as&nbsp;<span class="font-medium"> Hole (μ<sub>P</sub>=0)</span>
+
+            <label class="col-span-4 mt-2 flex items-center gap-1 text-xs select-none">
+              <input id="holeChk" type="checkbox">
+              Inclusion as&nbsp;<span class="font-medium">Hole (μ<sub>P</sub>=0)</span>
             </label>
           </div>
         </div>
-      </div>
 
-      <!-- Mode (plane strain / stress) -->
-      <div class="box">
-        <div class="box-h">Mode</div>
-        <div class="box-b space-y-2">
-          <label class="flex items-center gap-1">
-            <input name="plane" type="radio" value="strain" checked> plane strain
-          </label>
-          <label class="flex items-center gap-1">
-            <input name="plane" type="radio" value="stress"> plane stress
-          </label>
-        </div>
-      </div>
-
-      <!-- Stress table -->
+      </div><!-- /row -->
+<!-- Stress table -->
       <div class="box">
         <div class="box-h">Stress</div>
         <div class="box-b p-0 overflow-hidden">
-          <table id="stressTable" class="w-full text-right text-xs border-collapse">
+          <table id="stressTable"
+                 class="w-full text-right text-xs border-collapse">
             <thead class="bg-slate-100 border-b border-slate-300">
               <tr>
                 <th class="px-2 py-1"></th>
-                <th class="px-2 py-1">max &sigma;</th>
-                <th class="px-2 py-1">min &sigma;</th>
+                <th class="px-2 py-1">max&nbsp;&sigma;</th>
+                <th class="px-2 py-1">min&nbsp;&sigma;</th>
                 <th class="px-2 py-1">&sigma;(x,y)</th>
               </tr>
             </thead>
@@ -159,7 +176,8 @@
               <tr class="border-b border-slate-200">
                 <td class="text-left px-2 py-1">
                   <label class="flex items-center gap-1">
-                    <input name="comp" type="radio" value="0" checked> σₓₓ
+                    <input name="comp" type="radio" value="0" checked>
+                    σₓₓ
                   </label>
                 </td>
                 <td id="max_xx" class="px-2 py-1">-</td>
@@ -169,7 +187,8 @@
               <tr class="border-b border-slate-200">
                 <td class="text-left px-2 py-1">
                   <label class="flex items-center gap-1">
-                    <input name="comp" type="radio" value="1"> σᵧᵧ
+                    <input name="comp" type="radio" value="1">
+                    σᵧᵧ
                   </label>
                 </td>
                 <td id="max_yy" class="px-2 py-1">-</td>
@@ -179,7 +198,8 @@
               <tr>
                 <td class="text-left px-2 py-1">
                   <label class="flex items-center gap-1">
-                    <input name="comp" type="radio" value="2"> τₓᵧ
+                    <input name="comp" type="radio" value="2">
+                    τₓᵧ
                   </label>
                 </td>
                 <td id="max_xy" class="px-2 py-1">-</td>
@@ -191,22 +211,50 @@
         </div>
       </div>
 
+
+<!-- View (tidy grid) -->
+<div class="box">
+  <div class="box-h">
+    <span>View</span>
+    <button id="viewReset"
+            class="rounded bg-slate-200 px-2 py-0.5 text-xs hover:bg-slate-300">
+      Reset
+    </button>
+  </div>
+
+  <!-- 6‑column grid: label | field | label | field | icon | field -->
+  <div class="box-b grid grid-cols-[auto_1fr_auto_1fr_auto_1fr] gap-x-2 items-center">
+
+    <span>x</span>
+    <input id="viewX" class="numb bg-slate-100 text-slate-500 cursor-default"
+           type="text" value="0.00" readonly>
+
+    <span>y</span>
+    <input id="viewY" class="numb bg-slate-100 text-slate-500 cursor-default"
+           type="text" value="0.00" readonly>
+
+    <span class="text-[15px]">🔍</span>
+    <input id="viewZoom" class="numb bg-slate-100 text-slate-500 cursor-default"
+           type="text" value="1.00" readonly>
+
+  </div>
+</div>
+      </div>
+      
+
       <!-- Colour map -->
       <div class="box">
         <div class="box-h">Colour map</div>
         <div class="box-b space-y-2">
-          <select id="cmap" class="w-full border border-slate-300 rounded px-2 py-1">
+          <select id="cmap"
+                  class="w-full border border-slate-300 rounded px-2 py-1">
             <option value="0">Rainbow</option>
             <option value="1">Jet</option>
             <option value="2">Hot</option>
-            <option value="3">Cool-Warm</option>
-            <option value="4">Inv Cool-Warm</option>
+            <option value="3">Cool‑Warm</option>
+            <option value="4">Inv Cool‑Warm</option>
           </select>
           <canvas id="legendCanvas" class="h-[14px] w-full rounded"></canvas>
-          <!-- NEW: lock-range toggle -->
-          <label class="flex items-center gap-1 text-xs select-none">
-              <input id="lockRange" type="checkbox" > lock range
-          </label>
           <div class="flex justify-between text-[11px] tabular-nums">
             <span id="legendMin">-</span>
             <span id="legendMax">-</span>
@@ -217,16 +265,15 @@
       <!-- Save PNG -->
       <button id="btnSave" class="w-full btn-primary">Save PNG</button>
 
-
-    </aside>
+    </aside><!-- /Sidebar -->
   </main>
 
   <!-- Footer -->
   <footer class="py-4 text-center text-xs text-slate-500">
-    Stress-field visualiser footnotes
+    Stress‑field visualiser footnotes
   </footer>
 
-  <!-- Bundle (load last) -->
+  <!-- Bundle -->
   <script type="module" src="/src/main.ts"></script>
 </body>
 </html>
