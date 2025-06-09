@@ -12,7 +12,7 @@ import reduceFragSrc from './shaders/reduceMinMax.frag?raw';
 /* ── defaults ─────────────────────────────────────────────────── */
 const r0   = 0.25;
 const DEF = {
-  lambda: 0, beta: 0,
+  lambda: 1, beta: 0,
   rho: 0.1, nuM: 0.17, nuP: 0.33,
   plane: 'strain' as 'strain' | 'stress',
 };
@@ -267,8 +267,8 @@ function gpuMinMax(comp:number):[number,number]{
   gl.uniform1f(US.kM,kM); gl.uniform1f(US.kP,kP);
   gl.uniform1f(US.S,1);
   gl.uniform1i(US.comp, comp);
-  gl.uniform1f(US.zoom,zoom);
-  gl.uniform2f(US.pan,panX,panY);
+  gl.uniform1f(US.zoom,1);
+  gl.uniform2f(US.pan,0,0);
   gl.uniform1f(US.asp,canvas.width/canvas.height);
   gl.uniform1i(US.hole,holeMode?1:0);
 
