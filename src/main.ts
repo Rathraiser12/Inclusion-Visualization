@@ -23,6 +23,9 @@ const $ = <T = HTMLElement>(id: string) =>
 const clampNu = (v: number) => v < 0 ? 0 : v > 0.5 ? 0.5 : v;
 const num = (el: HTMLInputElement, d = 0) =>
   Number.isFinite(el.valueAsNumber) ? el.valueAsNumber : d;
+const clamp = (v:number, lo:number, hi:number) =>
+  v < lo ? lo : v > hi ? hi : v;
+
 
 /* ── DOM handles ─────────────────────────────────────────────── */
 const inputs = {
@@ -41,10 +44,12 @@ const inputs = {
 const holeChk   = $('holeChk')   as HTMLInputElement;
 
 /* View widget */
-const viewX     = $('viewX')     as HTMLSpanElement;
-const viewY     = $('viewY')     as HTMLSpanElement;
-const viewZoom  = $('viewZoom')  as HTMLSpanElement;
+const viewX    = $('viewX')    as HTMLInputElement;
+const viewY    = $('viewY')    as HTMLInputElement;
+const viewZoom = $('viewZoom') as HTMLInputElement;
 const viewReset = $('viewReset') as HTMLButtonElement;
+
+
 /* stress-table cells */
 const cur_xx = $('cur_xx'), cur_yy = $('cur_yy'), cur_xy = $('cur_xy');
 const min_xx = $('min_xx'), max_xx = $('max_xx');
@@ -67,7 +72,28 @@ let holeMode = false;
 
 
 
+viewX.addEventListener('input', () => {
+  const v = parseFloat(viewX.value);
+  if (Number.isFinite(v)){ 
+    panX = clamp(v, -1, 1);
+   viewX.value = panX.toFixed(2); }
+});
 
+// update pan when the user edits y
+viewY.addEventListener('input', () => {
+  const v = parseFloat(viewY.value);
+  if (Number.isFinite(v)){ 
+    panY = clamp(v, -1, 1);
+   viewY.value = panY.toFixed(2);}
+})
+// update zoom (clamp to something positive)
+viewZoom.addEventListener('input', () => {
+  const v = parseFloat(viewZoom.value);
+  if (Number.isFinite(v)){
+    zoom = clamp(v, 0.10, 1e6);
+   viewZoom.value = zoom.toFixed(2);
+  }
+});
 
 /* ── WebGL bootstrap ─────────────────────────────────────────── */
 const canvas = $('glCanvas') as HTMLCanvasElement;
@@ -193,16 +219,26 @@ gl.bindTexture (gl.TEXTURE_2D,null);
 let zoom=1, panX=0, panY=0, dragging=false, lastX=0, lastY=0;
 canvas.addEventListener('mousedown',e=>{ dragging=true; lastX=e.clientX; lastY=e.clientY; });
 window.addEventListener('mouseup',()=>dragging=false);
-window.addEventListener('mousemove',e=>{
-  if(!dragging) return;
-  const asp=canvas.width/canvas.height;
-  panX -= (e.clientX-lastX)/canvas.height*2*asp/zoom;
-  panY += (e.clientY-lastY)/canvas.height*2/zoom;
-  lastX=e.clientX; lastY=e.clientY;
+window.addEventListener('mousemove', e => {
+  if (!dragging) return;
+  const asp = canvas.width / canvas.height;
+  panX = clamp(
+    panX - (e.clientX - lastX) / canvas.height * 2 * asp / zoom,
+   -1, 1
+  );
+  panY = clamp(
+    panY + (e.clientY - lastY) / canvas.height * 2 / zoom,
+   -1, 1
+  );
+  lastX = e.clientX;
+  lastY = e.clientY;
+   updateViewDisplay();              // keep inputs in sync
 });
 canvas.addEventListener('wheel',e=>{
   e.preventDefault();
   zoom *= e.deltaY>0?1.1:0.9;
+   zoom = clamp(zoom, 0.10, 1e6);   // 0.10 ≤ zoom
+    updateViewDisplay();              //  reflect zoom change
 },{passive:false});
 
 /* resize */
@@ -403,9 +439,9 @@ btnSave.addEventListener('click',()=>{
   a.click();
 });
 function updateViewDisplay(){
-  viewX.textContent    = panX.toFixed(2);
-  viewY.textContent    = panY.toFixed(2);
-  viewZoom.textContent = zoom.toFixed(2);
+  viewX.value    = panX.toFixed(2);
+  viewY.value    = panY.toFixed(2);
+  viewZoom.value = zoom.toFixed(2);
 }
 function resetPanZoom(){
   zoom = 1;
