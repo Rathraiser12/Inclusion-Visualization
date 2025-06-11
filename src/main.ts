@@ -197,7 +197,7 @@ function material(){
 /* ── reduction pyramid (256² → 1×1) ─────────────────────────── */
 interface Level{ tex:WebGLTexture; fbo:WebGLFramebuffer; w:number; h:number }
 const levels:Level[] = [];
-let w=1024, h=1024;
+let w=2048, h=2048;
 for(;;){
   const tex=gl.createTexture()!;
   gl.bindTexture(gl.TEXTURE_2D,tex);
@@ -460,8 +460,11 @@ function draw(){
 
  
 
-  pushFinalUniforms(vmin,vmax);
+ 
   drawLegend(vmin,vmax);
+
+  updateGlobalExtremesDisplay();
+  pushFinalUniforms(vmin,vmax);
 
   gl.bindFramebuffer(gl.FRAMEBUFFER,null);
   gl.viewport(0,0,canvas.width,canvas.height);

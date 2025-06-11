@@ -136,5 +136,10 @@ void main() {
   }
 
   float val = (u_component==0)?sxx:(u_component==1)?syy:txy;
+  /* make interior white if this is the hole case */
+  if (u_hole == 1 && r <= u_r0) {
+    fragColor = vec4(1.0);             // opaque white
+    return;
+  }
   fragColor = vec4(applyCMap(val), 1.0);
 }

@@ -4,8 +4,7 @@
 ### Bugs and Features
 - lamda=0 visualization bug, 
 - values dispalyed not mathcing iwth formual for hoel scenario
-- the visualization changes when i pan the inclusion to the edge(min max currently depends on viewport)
-- check about the lock range shit
+- adjust the size for different screens and just my display
 
 - arrows for when changing angle
 - when selecting hole make the center inclusion part blank
