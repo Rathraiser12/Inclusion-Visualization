@@ -197,7 +197,7 @@ function material(){
 /* ── reduction pyramid (256² → 1×1) ─────────────────────────── */
 interface Level{ tex:WebGLTexture; fbo:WebGLFramebuffer; w:number; h:number }
 const levels:Level[] = [];
-let w=2048, h=2048;
+let w=1042, h=1042;
 for(;;){
   const tex=gl.createTexture()!;
   gl.bindTexture(gl.TEXTURE_2D,tex);
@@ -300,7 +300,7 @@ function gpuMinMax(comp: number): [number, number] {
   /* ----- analytic edge extrema (720 samples) ------------------ */
   let vmin = buf[0];
   let vmax = buf[1];
-  const N = 720;                               // 0.5° steps
+  const N = 900;                               // 0.5° steps
   for (let i = 0; i < N; ++i) {
     const θ = (i / N) * 2 * Math.PI;
     const [sxx, syy, txy] = analyticStressAt(
@@ -480,11 +480,11 @@ function draw(){
  const [vmin, vmax] = gpuMinMax(comp);
  
 
-  
+
   drawLegend(vmin,vmax);
 
   updateGlobalExtremesDisplay();
-  pushFinalUniforms(vmin,vmax);
+    pushFinalUniforms(vmin,vmax);
 
   gl.bindFramebuffer(gl.FRAMEBUFFER,null);
   gl.viewport(0,0,canvas.width,canvas.height);
