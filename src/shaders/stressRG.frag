@@ -64,7 +64,7 @@ if(u_hole == 1){
           (s2b + (1.0 - B) *
            (3.0 * rr4 - 2.0 * rr2) * sin(4.0 * th - 2.0 * u_beta));
   }
-  return (u_component == 0) ? sxx : (u_component == 1) ? syy : txy;
+  return (u_component == 0) ? sxx : (u_component == 1) ? syy : -txy;
 }
 
 void main()

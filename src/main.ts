@@ -102,6 +102,26 @@ if (!gl) throw new Error('WebGL2 not supported');
 if (!gl.getExtension('EXT_color_buffer_float'))
   throw new Error('EXT_color_buffer_float required');
 
+//dots
+const maxDot = document.createElement('div');
+const minDot = document.createElement('div');
+for (const d of [maxDot, minDot]) {
+  Object.assign(d.style, {
+    position      : 'absolute',
+    width         : '8px',
+    height        : '8px',
+    borderRadius  : '50%',
+    border        : '2px solid #fff',
+    pointerEvents : 'none'
+  });
+}
+maxDot.style.background = '#d00';   // red  = max
+minDot.style.background = '#00d';   // blue = min
+/* the canvas sits in a <section>, make that the positioning root */
+const canvasHolder = canvas.parentElement! as HTMLElement;
+canvasHolder.style.position = 'relative';
+canvasHolder.append(maxDot, minDot);
+
 /* compile / link helpers */
 function compile(type: number, src: string) {
   const sh = gl.createShader(type)!;
@@ -314,7 +334,32 @@ function gpuMinMax(comp: number): [number, number] {
 
   return [vmin, vmax];
 }
+/* --------------------------------------------------------------
+   Map a texel‑index in the 1024 × 1024 reduction texture
+   → canvas‑pixel coordinates, honouring the current pan / zoom
+   -------------------------------------------------------------- */
+function texelToCanvas(ix: number, iy: number) {
+  const root = levels[0];                       // 1024 × 1024
+  /* 1. texel‑centre → NDC  in the *un‑panned, un‑zoomed* pass   */
+  const ndc0x = (ix + 0.5) / root.w * 2.0 - 1.0;   // −1 … +1
+  const ndc0y = 1.0 - (iy + 0.5) / root.h * 2.0;   // y‑axis flipped
+  const asp   = canvas.width / canvas.height;
 
+  /* 2. NDC → world (the pass used zoom = 1, pan = 0)            */
+  const wx = ndc0x * asp;          // world‑coords
+  const wy = ndc0y;
+
+  /* 3. world → current NDC after pan / zoom                     */
+  const ndc1x = (wx * zoom - panX) / asp;
+  const ndc1y =  wy * zoom - panY;
+
+  /* 4. NDC → canvas pixels (DPR‑aware)                          */
+  const dpr = window.devicePixelRatio || 1;
+  const cx  = (ndc1x + 1) * 0.5 * canvas.width  / dpr;
+  const cy  = (1 - ndc1y) * 0.5 * canvas.height / dpr;
+
+  return { cx, cy };
+}
 
 /* ── colour-map helpers (unchanged) ─────────────────────────── */
 type RGB=[number,number,number];
@@ -479,7 +524,30 @@ function draw(){
   const comp = +[...inputs.compRad].find(r=>r.checked)!.value;
  const [vmin, vmax] = gpuMinMax(comp);
  
+  {
+    const root = levels[0];                       // 1024 × 1024 RG32F
+    gl.bindFramebuffer(gl.FRAMEBUFFER, root.fbo);
+    const px = new Float32Array(root.w * root.h * 2);
+    gl.readPixels(0, 0, root.w, root.h, gl.RG, gl.FLOAT, px);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
+    let imin = 0, imax = 0, vminLoc =  Infinity, vmaxLoc = -Infinity;
+    for (let i = 0; i < root.w * root.h; ++i) {
+      const v = px[i * 2];            // R channel
+      if (v < vminLoc) { vminLoc = v; imin = i; }
+      if (v > vmaxLoc) { vmaxLoc = v; imax = i; }
+    }
+    const ixMax = imax % root.w, iyMax = (imax / root.w) | 0;
+    const ixMin = imin % root.w, iyMin = (imin / root.w) | 0;
+
+    const ptMax = texelToCanvas(ixMax, iyMax);
+    const ptMin = texelToCanvas(ixMin, iyMin);
+
+    maxDot.style.left = `${ptMax.cx - 4}px`;
+    maxDot.style.top  = `${ptMax.cy - 4}px`;
+    minDot.style.left = `${ptMin.cx - 4}px`;
+    minDot.style.top  = `${ptMin.cy - 4}px`;
+  }
 
   drawLegend(vmin,vmax);
 
@@ -524,7 +592,7 @@ function analyticStressAt(x:number,y:number){
     txy=-0.5*S*(λ+1)*(1-A)*rr2*s2θ
         +0.5*S*(λ-1)*(s2β+(1-B)*(3*rr4-2*rr2)*Math.sin(4*θ-2*β));
   }
-  return [sxx,syy,-txy] as const;
+  return [sxx,syy,txy] as const;
 }
 canvas.addEventListener('mousemove',e=>{
   const r=canvas.getBoundingClientRect();

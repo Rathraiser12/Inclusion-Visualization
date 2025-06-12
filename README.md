@@ -7,7 +7,7 @@
 
 - arrows for when changing angle
 
-- display the min max point in the vizualization
+
 
 - Edge cases, write unit tests.
 - memoization (partially done)
