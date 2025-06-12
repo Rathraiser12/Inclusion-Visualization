@@ -50,19 +50,19 @@ if(u_hole == 1){
     sxx = 0.5 * S * (lam + 1.0) * (1.0 - (1.0 - A) * rr2 * c2t)
         + 0.5 * S * (lam - 1.0) *
           (c2b + (1.0 - B) *
-           (3.0 * rr4 * c2b - 4.0 * rr2 *
-            cos(2.0 * u_beta - th) * cos(th)));
+           (3.0 * rr4 * cos(4.0*th - 2.0*u_beta) - 4.0 * rr2 *
+            cos(2.0*u_beta -3.0*th) * cos(th)));
 
     syy = 0.5 * S * (lam + 1.0) * (1.0 + (1.0 - A) * rr2 * c2t)
         - 0.5 * S * (lam - 1.0) *
           (c2b + (1.0 - B) *
-           (3.0 * rr4 * c2b + 4.0 * rr2 *
-            cos(2.0 * u_beta - th) * cos(th)));
+           (3.0 * rr4 * cos(4.0*th - 2.0*u_beta) - 4.0 * rr2 *
+            sin(2.0 * u_beta - 3.0*th) * sin(th)));
 
     txy = -0.5 * S * (lam + 1.0) * (1.0 - A) * rr2 * s2t
         + 0.5 * S * (lam - 1.0) *
           (s2b + (1.0 - B) *
-           (3.0 * rr4 * sin(4.0 * th - 2.0 * u_beta) - 2.0 * rr2 * s2b));
+           (3.0 * rr4 - 2.0 * rr2) * sin(4.0 * th - 2.0 * u_beta));
   }
   return (u_component == 0) ? sxx : (u_component == 1) ? syy : txy;
 }

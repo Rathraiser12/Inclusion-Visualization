@@ -250,50 +250,71 @@ function resize(){
 }
 window.addEventListener('resize',resize); resize();
 
-/* ── GPU min/max for component ─────────────────────────────── */
-function gpuMinMax(comp:number):[number,number]{
-  const {γ,kM,kP}=material();
 
-  /* pass 0 – analytic stress → RG32F */
-  const root=levels[0];
-  gl.bindFramebuffer(gl.FRAMEBUFFER,root.fbo);
-  gl.viewport(0,0,root.w,root.h);
+
+/* ── GPU min/max for component ─────────────────────────────── */
+function gpuMinMax(comp: number): [number, number] {
+  const { γ, kM, kP } = material();
+
+  /* pass 0 – analytic stress → RG32F (viewport‑independent) */
+  const root = levels[0];
+  gl.bindFramebuffer(gl.FRAMEBUFFER, root.fbo);
+  gl.viewport(0, 0, root.w, root.h);
   gl.useProgram(stressProg);
 
-  gl.uniform1f(US.r0,r0);
-  gl.uniform1f(US.lambda, num(inputs.lambda,DEF.lambda));
-  gl.uniform1f(US.beta,   num(inputs.beta,DEF.beta)*Math.PI/180);
+  gl.uniform1f(US.r0, r0);
+  gl.uniform1f(US.lambda, num(inputs.lambda, DEF.lambda));
+  gl.uniform1f(US.beta,   num(inputs.beta,   DEF.beta) * Math.PI / 180);
   gl.uniform1f(US.gamma,  γ);
-  gl.uniform1f(US.kM,kM); gl.uniform1f(US.kP,kP);
-  gl.uniform1f(US.S,1);
+  gl.uniform1f(US.kM, kM);
+  gl.uniform1f(US.kP, kP);
+  gl.uniform1f(US.S, 1);
   gl.uniform1i(US.comp, comp);
-  gl.uniform1f(US.zoom,1);
-  gl.uniform2f(US.pan,0,0);
-  gl.uniform1f(US.asp,canvas.width/canvas.height);
-  gl.uniform1i(US.hole,holeMode?1:0);
+  gl.uniform1f(US.zoom, 1);          // fixed
+  gl.uniform2f(US.pan,  0, 0);       // fixed
+  gl.uniform1f(US.asp, canvas.width / canvas.height);
+  gl.uniform1i(US.hole, holeMode ? 1 : 0);
 
-  gl.drawArrays(gl.TRIANGLES,0,6);
+  gl.drawArrays(gl.TRIANGLES, 0, 6);
 
-  /* reduction passes */
+  /* reduction passes (unchanged) */
   gl.useProgram(reduceProg);
-  for(let i=1;i<levels.length;i++){
-    const src=levels[i-1], dst=levels[i];
-    gl.bindFramebuffer(gl.FRAMEBUFFER,dst.fbo);
-    gl.viewport(0,0,dst.w,dst.h);
-    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D,src.tex);
-    gl.uniform1i(UR.src,0);
-    gl.uniform2f(UR.step,1/src.w,1/src.h);
-    gl.drawArrays(gl.TRIANGLES,0,6);
+  for (let i = 1; i < levels.length; i++) {
+    const src = levels[i - 1], dst = levels[i];
+    gl.bindFramebuffer(gl.FRAMEBUFFER, dst.fbo);
+    gl.viewport(0, 0, dst.w, dst.h);
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, src.tex);
+    gl.uniform1i(UR.src, 0);
+    gl.uniform2f(UR.step, 1 / src.w, 1 / src.h);
+    gl.drawArrays(gl.TRIANGLES, 0, 6);
   }
 
-  /* read 1×1 RG */
-  const last=levels[levels.length-1];
-  gl.bindFramebuffer(gl.FRAMEBUFFER,last.fbo);
-  const buf=new Float32Array(2);
-  gl.readPixels(0,0,1,1,gl.RG,gl.FLOAT,buf);
-  gl.bindFramebuffer(gl.FRAMEBUFFER,null);
-  return [buf[0],buf[1]];
+  /* read 1×1 RG from last level */
+  const last = levels[levels.length - 1];
+  gl.bindFramebuffer(gl.FRAMEBUFFER, last.fbo);
+  const buf = new Float32Array(2);
+  gl.readPixels(0, 0, 1, 1, gl.RG, gl.FLOAT, buf);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+  /* ----- analytic edge extrema (720 samples) ------------------ */
+  let vmin = buf[0];
+  let vmax = buf[1];
+  const N = 720;                               // 0.5° steps
+  for (let i = 0; i < N; ++i) {
+    const θ = (i / N) * 2 * Math.PI;
+    const [sxx, syy, txy] = analyticStressAt(
+      r0 * Math.cos(θ),
+      r0 * Math.sin(θ)
+    );
+    const val = comp === 0 ? sxx : comp === 1 ? syy : txy;
+    if (val < vmin) vmin = val;
+    if (val > vmax) vmax = val;
+  }
+
+  return [vmin, vmax];
 }
+
 
 /* ── colour-map helpers (unchanged) ─────────────────────────── */
 type RGB=[number,number,number];
@@ -456,11 +477,10 @@ updateViewDisplay();
 /* ── render loop ─────────────────────────────────────────────── */
 function draw(){
   const comp = +[...inputs.compRad].find(r=>r.checked)!.value;
-  let [vmin,vmax]=gpuMinMax(comp);
-
+ const [vmin, vmax] = gpuMinMax(comp);
  
 
- 
+  
   drawLegend(vmin,vmax);
 
   updateGlobalExtremesDisplay();
@@ -486,6 +506,8 @@ function analyticStressAt(x:number,y:number){
   const c2β=Math.cos(2*β), s2β=Math.sin(2*β);
 
   const r=Math.hypot(x,y), θ=Math.atan2(y,x);
+ 
+ 
   let sxx,syy,txy;
 
   if(r<=r0){
@@ -496,11 +518,11 @@ function analyticStressAt(x:number,y:number){
     const rr2=(r0*r0)/(r*r), rr4=rr2*rr2;
     const c2θ=Math.cos(2*θ), s2θ=Math.sin(2*θ);
     sxx=0.5*S*(λ+1)*(1-(1-A)*rr2*c2θ)
-       +0.5*S*(λ-1)*(c2β+(1-B)*(3*rr4*c2β-4*rr2*Math.cos(2*β-θ)*Math.cos(θ)));
+       +0.5*S*(λ-1)*(c2β+(1-B)*(3*rr4*Math.cos(4*θ-2*β)-4*rr2*Math.cos(2*β-3*θ)*Math.cos(θ)));
     syy=0.5*S*(λ+1)*(1+(1-A)*rr2*c2θ)
-       -0.5*S*(λ-1)*(c2β+(1-B)*(3*rr4*c2β+4*rr2*Math.cos(2*β-θ)*Math.cos(θ)));
+       -0.5*S*(λ-1)*(c2β+(1-B)*(3*rr4*Math.cos(4*θ-2*β)-4*rr2*Math.sin(2*β-3*θ)*Math.sin(θ)));
     txy=-0.5*S*(λ+1)*(1-A)*rr2*s2θ
-        +0.5*S*(λ-1)*(s2β+(1-B)*(3*rr4*Math.sin(4*θ-2*β)-2*rr2*s2β));
+        +0.5*S*(λ-1)*(s2β+(1-B)*(3*rr4-2*rr2)*Math.sin(4*θ-2*β));
   }
   return [sxx,syy,-txy] as const;
 }
