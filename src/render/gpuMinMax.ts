@@ -95,27 +95,27 @@ function analyticStressAt(x: number, y: number) {
   let sxx, syy, txy;
 
   if (r <= r0) {
-    sxx = 0.5 * S * ((λ + 1) * A + (λ - 1) * B * c2β);
-    syy = 0.5 * S * ((λ + 1) * A - (λ - 1) * B * c2β);
-    txy = 0.5 * S * (λ - 1) * B * s2β;
+    sxx = 0.5 * S * ((λ + 1) * A + (1- λ ) * B * c2β);
+    syy = 0.5 * S * ((λ + 1) * A - (1-λ) * B * c2β);
+    txy = 0.5 * S * (1-λ ) * B * s2β;
   } else {
     const rr2 = (r0 * r0) / (r * r);
     const rr4 = rr2 * rr2;
     const c2θ = Math.cos(2 * θ), s2θ = Math.sin(2 * θ);
     sxx = 0.5 * S * (λ + 1) * (1 - (1 - A) * rr2 * c2θ)
-        + 0.5 * S * (λ - 1) *
+        + 0.5 * S * (1-λ ) *
           ( c2β
           + (1 - B) *
             (3 * rr4 * Math.cos(4 * θ - 2 * β)
              -4 * rr2 * Math.cos(2 * β - 3 * θ) * Math.cos(θ)));
     syy = 0.5 * S * (λ + 1) * (1 + (1 - A) * rr2 * c2θ)
-        - 0.5 * S * (λ - 1) *
+        - 0.5 * S * (1-λ ) *
           ( c2β
           + (1 - B) *
             (3 * rr4 * Math.cos(4 * θ - 2 * β)
              -4 * rr2 * Math.sin(2 * β - 3 * θ) * Math.sin(θ)));
     txy =-0.5 * S * (λ + 1) * (1 - A) * rr2 * s2θ
-        + 0.5 * S * (λ - 1) *
+        + 0.5 * S * (1-λ) *
           ( s2β + (1 - B) * (3 * rr4 - 2 * rr2) * Math.sin(4 * θ - 2 * β));
   }
   return [sxx, syy, txy] as const;

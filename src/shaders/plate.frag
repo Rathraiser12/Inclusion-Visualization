@@ -116,9 +116,9 @@ void main() {
   float sxx, syy, txy;
 
   if (r <= u_r0) {
-    sxx = 0.5*S*((lam+1.0)*A + (lam-1.0)*B*c2b);
-    syy = 0.5*S*((lam+1.0)*A - (lam-1.0)*B*c2b);
-    txy = 0.5*S*(lam-1.0)*B*s2b;
+    sxx = 0.5*S*((lam+1.0)*A + (1.0-lam)*B*c2b);
+    syy = 0.5*S*((lam+1.0)*A - (1.0-lam)*B*c2b);
+    txy = 0.5*S*(1.0-lam)*B*s2b;
   } else {
     float rr2 = (u_r0*u_r0)/(r*r);
     float rr4 = rr2*rr2;
@@ -126,13 +126,13 @@ void main() {
     float s2t = sin(2.0*th);
 
     sxx = 0.5*S*(lam+1.0)*(1.0-(1.0-A)*rr2*c2t)
-        + 0.5*S*(lam-1.0)*(c2b+(1.0-B)*(3.0*rr4*cos(4.0*th - 2.0*u_beta)-4.0*rr2*cos(2.0*u_beta - 3.0*th)*cos(th)));
+        + 0.5*S*(1.0-lam)*(c2b+(1.0-B)*(3.0*rr4*cos(4.0*th - 2.0*u_beta)-4.0*rr2*cos(2.0*u_beta - 3.0*th)*cos(th)));
 
     syy = 0.5*S*(lam+1.0)*(1.0+(1.0-A)*rr2*c2t)
-        - 0.5*S*(lam-1.0)*(c2b+(1.0-B)*(3.0*rr4*cos(4.0*th - 2.0*u_beta)-4.0*rr2*sin(2.0*u_beta - 3.0*th)*sin(th)));
+        - 0.5*S*(1.0-lam)*(c2b+(1.0-B)*(3.0*rr4*cos(4.0*th - 2.0*u_beta)-4.0*rr2*sin(2.0*u_beta - 3.0*th)*sin(th)));
 
     txy = -0.5*S*(lam+1.0)*(1.0-A)*rr2*s2t
-          +0.5*S*(lam-1.0)*(s2b + (1.0-B)*(3.0*rr4 - 2.0*rr2)*sin(4.0*th-2.0*u_beta));
+          +0.5*S*(1.0-lam)*(s2b + (1.0-B)*(3.0*rr4 - 2.0*rr2)*sin(4.0*th-2.0*u_beta));
   }
 
   float val = (u_component==0)?sxx:(u_component==1)?syy:txy;
