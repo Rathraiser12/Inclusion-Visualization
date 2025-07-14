@@ -25,6 +25,9 @@
 
     .btn-primary {@apply rounded-md bg-sky-600 text-white py-1.5
                            hover:bg-sky-700 active:bg-sky-800;}
+
+    /* missing helper from the original single‑file demo */
+    .grid2x2 {@apply grid grid-cols-[auto_1fr] gap-x-2 gap-y-1 items-center;}
   </style>
 </head>
 
@@ -47,181 +50,177 @@
       <canvas id="glCanvas" class="w-full h-full block"></canvas>
     </section>
 
-<!--────────── Control column ──────────-->
-<aside
-  class="flex-none w-full max-w-[520px]          /* phones / tablets  */
-         lg:max-w-none lg:flex-1 lg:pl-6">       <!-- ≥1024 px  -->
+    <!--────────── Control column ──────────-->
+    <aside
+      class="flex-none w-full max-w-[520px] lg:max-w-none lg:flex-1 lg:pl-6">
 
-  <!-- Pure CSS‑grid layout (no JS) -->
-  <div
-    class="grid gap-4 w-full
-           /* 2 columns once we have room */
-           lg:grid-cols-[220px_1fr]
-           /* let rows hug their boxes */
-           auto-rows-min">
+      <!-- Pure CSS‑grid layout (no JS) -->
+      <div
+        class="grid gap-4 w-full
+               lg:grid-cols-[220px_1fr]
+               auto-rows-min">
 
-    <!-- small left‑hand stack -->
-    <div class="space-y-4">
-      <!-- Geometry -->
-      <div class="box ">
-        <div class="box-h">
-          <span>Geometry &amp; load</span>
-          <button id="resetGeom"
-                  class="rounded bg-slate-200 px-2 py-0.5 text-xs
-                         hover:bg-slate-300">Reset</button>
+        <!-- small left‑hand stack -->
+        <div class="space-y-4">
+          <!-- Geometry -->
+          <div class="box">
+            <div class="box-h">
+              <span>Geometry &amp; load</span>
+              <button id="resetGeom"
+                      class="rounded bg-slate-200 px-2 py-0.5 text-xs
+                             hover:bg-slate-300">Reset</button>
+            </div>
+            <div class="box-b grid2x2">
+              <label for="lambda">&lambda;</label>
+              <input id="lambda" class="numb" type="number" step="0.01" value="1">
+              <label for="beta">&beta;°</label>
+              <input id="beta"   class="numb" type="number" step="1" value="0">
+            </div>
+          </div>
+
+          <!-- Mode -->
+          <div class="box">
+            <div class="box-h">Mode</div>
+            <div class="box-b grid2x2">
+              <label class="flex items-center gap-1">
+                <input name="plane" type="radio" value="strain" checked> plane strain
+              </label>
+              <label class="flex items-center gap-1">
+                <input name="plane" type="radio" value="stress"> plane stress
+              </label>
+            </div>
+          </div>
+        </div><!-- /small stack -->
+
+        <!-- ───── right‑hand column (View on top, Material below) ───── -->
+        <div class="flex flex-col gap-4">
+
+          <!-- View (small card) -->
+          <div class="box max-w-[370px]">
+            <div class="box-h">
+              <span>View</span>
+              <button id="viewReset"
+                      class="rounded bg-slate-200 px-2 py-0.5 text-xs hover:bg-slate-300">
+                Reset
+              </button>
+            </div>
+            <div class="box-b grid grid-cols-[auto_1fr_auto_1fr_auto_1fr] gap-x-2 items-center">
+              <span>x</span> <input id="viewX"   class="numb" step="0.05" value="0">
+              <span>y</span> <input id="viewY"   class="numb" step="0.05" value="0">
+              <span class="text-[15px]">🔍</span>
+              <input id="viewZoom" class="numb" step="0.1"  value="1">
+            </div>
+          </div>
+
+          <!-- Material (wide card) -->
+          <div class="box max-w-[370px]">
+            <div class="box-h">
+              <span>Material</span>
+              <button id="resetMat"
+                      class="rounded bg-slate-200 px-2 py-0.5 text-xs hover:bg-slate-300">
+                Reset
+              </button>
+            </div>
+            <div class="box-b grid2x2">
+              <label for="rho">&Gamma;</label>
+              <input id="rho" class="numb" value="0.10">
+              <label for="nuM">&nu;<sub>M</sub></label>
+              <input id="nuM" class="numb" type="number" value="0.17" step="0.01">
+              <label for="nuP">&nu;<sub>P</sub></label>
+              <input id="nuP" class="numb" type="number" value="0.33" step="0.01">
+
+              <div></div>
+              <label class="col-span-4 mt-2 flex items-center gap-1 text-xs">
+                <input id="holeChk" type="checkbox">
+                <span class="font-medium">Hole (μ<sub>P</sub>=0)</span>
+              </label>
+            </div>
+          </div>
+
+        </div><!-- /right‑hand column -->
+
+        <!-- ------------ Stress table (full width) ------------------ -->
+        <div class="box col-span-full lg:col-span-2 max-w-[610px]">
+          <div class="box-h">Stress</div>
+          <div class="box-b p-0 overflow-hidden">
+            <table class="w-full text-right text-xs border-collapse">
+              <thead class="bg-slate-100 border-b border-slate-300">
+                <tr>
+                  <th class="px-2 py-1"></th>
+                  <th class="px-2 py-1">max&nbsp;&sigma;</th>
+                  <th class="px-2 py-1">min&nbsp;&sigma;</th>
+                  <th class="px-2 py-1">&sigma;(x,y)</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr class="border-b border-slate-200">
+                  <td class="text-left px-2 py-1">
+                    <label class="flex items-center gap-1">
+                      <input name="comp" type="radio" value="0" checked>
+                      σₓₓ
+                    </label>
+                  </td>
+                  <td id="max_xx" class="px-2 py-1">‑</td>
+                  <td id="min_xx" class="px-2 py-1">‑</td>
+                  <td id="cur_xx" class="px-2 py-1">‑</td>
+                </tr>
+                <tr class="border-b border-slate-200">
+                  <td class="text-left px-2 py-1">
+                    <label class="flex items-center gap-1">
+                      <input name="comp" type="radio" value="1">
+                      σᵧᵧ
+                    </label>
+                  </td>
+                  <td id="max_yy" class="px-2 py-1">‑</td>
+                  <td id="min_yy" class="px-2 py-1">‑</td>
+                  <td id="cur_yy" class="px-2 py-1">‑</td>
+                </tr>
+                <tr>
+                  <td class="text-left px-2 py-1">
+                    <label class="flex items-center gap-1">
+                      <input name="comp" type="radio" value="2">
+                      τₓᵧ
+                    </label>
+                  </td>
+                  <td id="max_xy" class="px-2 py-1">‑</td>
+                  <td id="min_xy" class="px-2 py-1">‑</td>
+                  <td id="cur_xy" class="px-2 py-1">‑</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
-        <div class="box-b grid2x2">
-          <label for="lambda">&lambda;</label>
-          <input id="lambda" class="numb" type="number" step="0.01" value="1">
-          <label for="beta">&beta;°</label>
-          <input id="beta"   class="numb" type="number" step="1" value="0">
+
+        <!-- Colour map card ---------------------------------------- -->
+        <div class="box lg:col-span-2 max-w-[610px]">
+          <div class="box-h">Colour map</div>
+          <div class="box-b space-y-1">
+            <select id="cmap" class="w-full border border-slate-300 rounded px-2 py-1">
+              <option value="0">Rainbow</option><option value="1">Jet</option>
+              <option value="2">Hot</option><option value="3">Cool‑Warm</option>
+              <option value="4">Inv Cool‑Warm</option>
+            </select>
+            <canvas id="legendCanvas" class="h-[14px] w-full rounded"></canvas>
+            <div class="flex justify-between text-[11px] tabular-nums">
+              <span id="legendMin">‑</span><span id="legendMax">‑</span>
+            </div>
+          </div>
         </div>
-      </div>
 
-      <!-- Mode -->
-      <div class="box">
-        <div class="box-h">Mode</div>
-        <div class="box-b space-y-1 box-b grid2x2">
-          <label class="flex items-center gap-1">
-            <input name="plane" type="radio" value="strain" checked> plane strain
-          </label>
-          <label class="flex items-center gap-1">
-            <input name="plane" type="radio" value="stress"> plane stress
-          </label>
-        </div>
-      </div>
-    </div><!-- /small stack -->
+        <!-- Save button ------------------------------------------- -->
+        <button id="btnSave" class="w-full btn-primary lg:col-span-2 max-w-[610px]">
+          Save PNG
+        </button>
 
-   <!-- ───── right‑hand column (View on top, Material below) ───── -->
-<div class="flex flex-col gap-4">
-
-  <!-- View (small card) -->
-  <div class="box max-w-[370px]">
-    <div class="box-h">
-      <span>View</span>
-      <button id="viewReset"
-              class="rounded bg-slate-200 px-2 py-0.5 text-xs hover:bg-slate-300">
-        Reset
-      </button>
-    </div>
-    <div class="box-b grid grid-cols-[auto_1fr_auto_1fr_auto_1fr] gap-x-2 items-center">
-      <span>x</span> <input id="viewX"   class="numb" step="0.05" value="0">
-      <span>y</span> <input id="viewY"   class="numb" step="0.05" value="0">
-      <span class="text-[15px]">🔍</span>
-      <input id="viewZoom" class="numb" step="0.1"  value="1">
-    </div>
-  </div>
-
-  <!-- Material (wide card) -->
-  <div class="box max-w-[370px] max-h-[95px]">
-    <div class="box-h">
-      <span>Material</span>
-      <button id="resetMat"
-              class="rounded bg-slate-200 px-2 py-0.5 text-xs hover:bg-slate-300">
-        Reset
-      </button>
-    </div>
-    <div class="box-b grid2x2 space-y-0.6">
-      <label for="rho">&Gamma;</label>
-      <input id="rho" class="numb" value="0.10">
-      <label for="nuM">&nu;<sub>M</sub></label>
-      <input id="nuM" class="numb" type="number" value="0.17" step="0.01">
-      <label for="nuP">&nu;<sub>P</sub></label>
-      <input id="nuP" class="numb" type="number" value="0.33" step="0.01">
-
-      <div></div>
-      <label class="col-span-4 mt-2 flex items-center gap-1 text-xs">
-        <input id="holeChk" type="checkbox">
-        <span class="font-medium">Hole (μ<sub>P</sub>=0)</span>
-      </label>
-    </div>
-  </div>
-
-</div><!-- /right‑hand column -->
-
-    <!-- full‑width boxes -------------------------------------->
-    <!-- ------------ Stress table (spans two columns) ------------------ -->
-      <div class="box col-span-full lg:col-span-2 max-w-[610px]">
-        <div class="box-h">Stress</div>
-        <div class="box-b p-0 overflow-hidden">
-          <table class="w-full text-right text-xs border-collapse">
-            <thead class="bg-slate-100 border-b border-slate-300">
-              <tr>
-                <th class="px-2 py-1"></th>
-                <th class="px-2 py-1">max&nbsp;&sigma;</th>
-                <th class="px-2 py-1">min&nbsp;&sigma;</th>
-                <th class="px-2 py-1">&sigma;(x,y)</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr class="border-b border-slate-200">
-                <td class="text-left px-2 py-1">
-                  <label class="flex items-center gap-1">
-                    <input name="comp" type="radio" value="0" checked>
-                    σₓₓ
-                  </label>
-                </td>
-                <td id="max_xx" class="px-2 py-1">‑</td>
-                <td id="min_xx" class="px-2 py-1">‑</td>
-                <td id="cur_xx" class="px-2 py-1">‑</td>
-              </tr>
-              <tr class="border-b border-slate-200">
-                <td class="text-left px-2 py-1">
-                  <label class="flex items-center gap-1">
-                    <input name="comp" type="radio" value="1">
-                    σᵧᵧ
-                  </label>
-                </td>
-                <td id="max_yy" class="px-2 py-1">‑</td>
-                <td id="min_yy" class="px-2 py-1">‑</td>
-                <td id="cur_yy" class="px-2 py-1">‑</td>
-              </tr>
-              <tr>
-                <td class="text-left px-2 py-1">
-                  <label class="flex items-center gap-1">
-                    <input name="comp" type="radio" value="2">
-                    τₓᵧ
-                  </label>
-                </td>
-                <td id="max_xy" class="px-2 py-1">‑</td>
-                <td id="min_xy" class="px-2 py-1">‑</td>
-                <td id="cur_xy" class="px-2 py-1">‑</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-   
-
-    <div class="box lg:col-span-2 max-w-[610px]">
-      <div class="box-h">Colour map</div>
-      <div class="box-b space-y-1">
-        <select id="cmap" class="w-full border border-slate-300 rounded px-2 py-1">
-          <option value="0">Rainbow</option><option value="1">Jet</option>
-          <option value="2">Hot</option><option value="3">Cool‑Warm</option>
-          <option value="4">Inv Cool‑Warm</option>
-        </select>
-        <canvas id="legendCanvas" class="h-[14px] w-full rounded"></canvas>
-        <div class="flex justify-between text-[11px] tabular-nums">
-          <span id="legendMin">‑</span><span id="legendMax">‑</span>
-        </div>
-      </div>
-    </div>
-
-    <button id="btnSave" class="w-full btn-primary lg:col-span-2 max-w-[610px]">Save PNG</button>
-  </div><!-- /grid -->
-</aside>
-<!--──────────── end control column ───────────-->
-
+      </div><!-- /grid -->
+    </aside><!-- /control column -->
   </main>
 
-  <!-- ------------------------------ footer ----------------------------- -->
   <footer class="py-4 text-center text-xs text-slate-500">
     Stress‑field visualiser footnotes
   </footer>
 
-  <!-- your TypeScript / shader bundle ----------------------------------- -->
+  <!-- TypeScript / shader bundle ----------------------------------- -->
   <script type="module" src="/src/index.ts"></script>
 </body>
 </html>

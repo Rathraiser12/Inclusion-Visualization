@@ -1,24 +1,31 @@
 {
   "compilerOptions": {
+    /* ───────── targets & env ───────── */
     "target": "ES2020",
-    "useDefineForClassFields": true,
     "module": "ESNext",
     "lib": ["ES2020", "DOM", "DOM.Iterable"],
-    "skipLibCheck": true,
+    "useDefineForClassFields": true,
 
-    /* Bundler mode */
+    /* ───────── React & Vite ───────── */
+    "jsx": "react-jsx",
+    "types": ["vite/client","react", "react-dom"],
+
+    /* ───────── bundler mode ───────── */
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
     "isolatedModules": true,
     "moduleDetection": "force",
     "noEmit": true,
+    "skipLibCheck": true,
 
-    /* Linting */
+    /* ───────── lint‑style checks ───── */
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true
   },
-  "include": ["src"]
+
+  /* tell TS which files to include */
+  "include": ["src", "vite.config.ts"]
 }

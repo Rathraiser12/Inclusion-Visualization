@@ -9,7 +9,8 @@
 - adjust the size for different screens and not just my display
     - i ahve hard coded some sizes need to fix those to make it truly flexible (cf. fredreich2015)
     - doesnt work properly for the big screens in cip pools infomatik and may e on my monitor
-    
+
+- the min max dots not sclaed properly with zoom
 
 - arrows for when changing angle?
 
