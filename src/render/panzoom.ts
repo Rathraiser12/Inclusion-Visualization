@@ -12,10 +12,12 @@ const updateInputs = () => {
   viewZoom.value = zoom.toFixed(2);
 };
 
+// --- Reset button ---
 viewReset.addEventListener('click', () => {
   zoom = 1; panX = 0; panY = 0; updateInputs();
 });
 
+// --- Mouse controls for pan/zoom ---
 canvas.addEventListener('wheel', e => {
   e.preventDefault();
   zoom *= e.deltaY > 0 ? 1.1 : 0.9;
@@ -41,4 +43,30 @@ window.addEventListener('mousemove', e => {
   );
   lastX = e.clientX; lastY = e.clientY;
   updateInputs();
+});
+
+
+// --- Manual text input for pan/zoom ---
+viewX.addEventListener('input', () => {
+  const v = parseFloat(viewX.value);
+  if (Number.isFinite(v)) {
+    panX = clamp(v, -1, 1);
+    viewX.value = panX.toFixed(2);
+  }
+});
+
+viewY.addEventListener('input', () => {
+  const v = parseFloat(viewY.value);
+  if (Number.isFinite(v)) {
+    panY = clamp(v, -1, 1);
+    viewY.value = panY.toFixed(2);
+  }
+});
+
+viewZoom.addEventListener('input', () => {
+  const v = parseFloat(viewZoom.value);
+  if (Number.isFinite(v)) {
+    zoom = clamp(v, 0.10, 1e6);
+    viewZoom.value = zoom.toFixed(2);
+  }
 });

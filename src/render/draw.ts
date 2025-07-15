@@ -13,7 +13,7 @@ import { getContext, link }               from "../core/gl";
 import { vertSrc, fragSrc }               from "../shaders";
 import { currentMaterial }                from "../core/material";
 import { zoom, panX, panY }               from "./panzoom";
-import { computeMinMax, texelToCanvas }   from "./gpuMinMax";
+import { computeMinMax, texelToCanvas, analyticStressAt }   from "./gpuMinMax";
 import { drawLegend }                     from "./legend";
 
 /* ------------------------------------------------------------------ */
@@ -129,6 +129,39 @@ function frame() {
 
   requestAnimationFrame(frame);
 }
+/* ------------------------------------------------------------------ */
+/* Mouse probe for analytic stress                                    */
+/* ------------------------------------------------------------------ */
+
+canvas.addEventListener('mousemove', e => {
+  const rect = canvas.getBoundingClientRect();
+  const cssX = e.clientX - rect.left;
+  const cssY = e.clientY - rect.top;
+
+  // Convert CSS pixels to Normalized Device Coordinates [-1, 1]
+  const ndcX = (cssX / canvas.clientWidth) * 2 - 1;
+  const ndcY = 1 - (cssY / canvas.clientHeight) * 2;
+
+  // Convert NDC to world coordinates, accounting for pan, zoom, and aspect ratio
+  const aspect = canvas.clientWidth / canvas.clientHeight;
+  const worldX = (ndcX * aspect + panX) / zoom;
+  const worldY = (ndcY + panY) / zoom;
+
+  // Calculate stress at the cursor's world position
+  const [sxx, syy, txy] = analyticStressAt(worldX, worldY);
+
+  // Update the UI table
+  cur_xx.textContent = sxx.toFixed(2);
+  cur_yy.textContent = syy.toFixed(2);
+  cur_xy.textContent = txy.toFixed(2);
+});
+
+canvas.addEventListener('mouseleave', () => {
+  // Clear the values when the mouse leaves the canvas
+  cur_xx.textContent = '‑';
+  cur_yy.textContent = '‑';
+  cur_xy.textContent = '‑';
+});
 
 /* DPR resize -------------------------------------------------------- */
 function resize() {

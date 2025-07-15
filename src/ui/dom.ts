@@ -68,7 +68,8 @@ export const btnSave   = $('btnSave',   () => {
   const b = document.createElement('button');
   return b;
 });
-
+export const resetGeom = $('resetGeom', () => document.createElement('button'));
+export const resetMat  = $('resetMat',  () => document.createElement('button'));
 /* legend ------------------------------------------------------------ */
 export const legendCanvas = $('legendCanvas', () => {
   const c = document.createElement('canvas');

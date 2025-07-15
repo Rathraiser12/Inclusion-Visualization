@@ -82,7 +82,7 @@ const num = (el: HTMLInputElement, d = 0) =>
   Number.isFinite(el.valueAsNumber) ? el.valueAsNumber : d;
 
 /* analytic closed‑form (same as shader) ----------------------------- */
-function analyticStressAt(x: number, y: number) {
+export function analyticStressAt(x: number, y: number) {
   const { gamma, kappa_m, kappa_p } = currentMaterial();
   const λ   = num(inputs.lambda, DEF.lambda);
   const β   = num(inputs.beta,   DEF.beta) * Math.PI / 180;
