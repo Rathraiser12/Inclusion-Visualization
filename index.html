@@ -1,226 +1,131 @@
 <!doctype html>
-<html lang="en" class="h-full scroll-smooth">
+<html lang="en" class="h-full bg-slate-100">
 <head>
   <meta charset="utf-8" />
-  <title>Infinite Plate With A Circular Inclusion Under Tension</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Infinite Plate With A Circular Inclusion</title>
 
-  <!-- font + Tailwind ---------------------------------------------------- -->
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
 
-  <!-- helper classes (cards, inputs …) ----------------------------------- -->
   <style type="text/tailwindcss">
-    body,html {@apply antialiased font-["Inter",sans-serif];}
-
-    .box   {@apply bg-white border border-slate-300 rounded-md shadow-sm;}
-    .box-h {@apply bg-slate-100 border-b border-slate-300 rounded-t-md
-                   px-3 py-1 flex justify-between items-center
-                   text-sm font-semibold text-slate-700;}
-    .box-b {@apply px-3 py-2;}
-
-    .numb {@apply w-full sm:w-[5rem] bg-white border border-slate-300 rounded
-                    px-2 py-1 text-right tabular-nums
-                    focus:outline-none focus:ring-2 focus:ring-sky-400;}
-
-    .btn-primary {@apply rounded-md bg-sky-600 text-white py-1.5
-                           hover:bg-sky-700 active:bg-sky-800;}
-
-    /* missing helper from the original single‑file demo */
-    .grid2x2 {@apply grid grid-cols-[auto_1fr] gap-x-2 gap-y-1 items-center;}
+    body { @apply font-sans antialiased text-slate-700; }
+    .control-card { @apply bg-white border border-slate-200/75 rounded-lg shadow-sm flex flex-col; }
+    .card-header { @apply bg-slate-50/75 border-b border-slate-200/75 px-3 py-2 flex justify-between items-center; }
+    .card-title { @apply text-sm font-semibold text-slate-800; }
+    .card-body { @apply p-3 flex-1; }
+    .form-input { @apply w-full bg-slate-50 border border-slate-200 rounded-md px-2 py-1 text-sm text-right tabular-nums focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500; }
+    .reset-btn { @apply text-xs font-medium text-slate-500 hover:text-sky-600; }
+    .primary-btn { @apply w-full rounded-lg bg-sky-600 text-white py-2.5 text-sm font-semibold shadow-sm hover:bg-sky-700 active:bg-sky-800; }
   </style>
 </head>
 
-<body class="h-full flex flex-col bg-slate-50 text-[12px] leading-5 text-slate-600">
+<body class="h-full flex flex-col">
 
-  <!-- ------------------------------ header ----------------------------- -->
-  <header class="py-4 text-center space-y-1">
-    <h1 class="text-xl font-semibold">
-      Infinite Plate With A Circular Inclusion Under Tension
+  <header class="py-3 text-center border-b border-slate-200 bg-white flex-shrink-0 z-10">
+    <h1 class="text-xl font-bold text-slate-900">
+      Infinite Plate With A Circular Inclusion
     </h1>
-    <p class="text-xs text-slate-500">(drag = pan · wheel = zoom)</p>
   </header>
 
-  <!-- ------------------------------ main -------------------------------->
-  <main class="flex flex-col lg:flex-row lg:flex-nowrap gap-6 flex-1 px-4 overflow-x-hidden">
+  <div class="flex-1 flex overflow-hidden">
+    <main class="flex-1 p-6 flex items-center justify-center">
+        <div class="w-full h-full bg-white rounded-lg shadow-inner ring-1 ring-slate-200">
+          <canvas id="glCanvas" class="w-full h-full block rounded-lg"></canvas>
+        </div>
+    </main>
 
-    <!-- -------- canvas -------------------------------------------------- -->
-    <section class="relative bg-white ring-1 ring-slate-200
-                    mx-auto flex-none w-full max-w-[650px] aspect-square">
-      <canvas id="glCanvas" class="w-full h-full block"></canvas>
-    </section>
-
-    <!--────────── Control column ──────────-->
-    <aside
-      class="flex-none w-full max-w-[520px] lg:max-w-none lg:flex-1 lg:pl-6">
-
-      <!-- Pure CSS‑grid layout (no JS) -->
-      <div
-        class="grid gap-4 w-full
-               lg:grid-cols-[220px_1fr]
-               auto-rows-min">
-
-        <!-- small left‑hand stack -->
-        <div class="space-y-4">
-          <!-- Geometry -->
-          <div class="box">
-            <div class="box-h">
-              <span>Geometry &amp; load</span>
-              <button id="resetGeom"
-                      class="rounded bg-slate-200 px-2 py-0.5 text-xs
-                             hover:bg-slate-300">Reset</button>
+    <aside class="w-full max-w-2xl h-full flex-shrink-0 bg-slate-50 border-l border-slate-200 overflow-y-auto">
+      <div class="p-4">
+        
+        <div class="grid grid-cols-2 gap-3">
+          <div class="control-card">
+            <div class="card-header"><h2 class="card-title">Geometry & load</h2><button id="resetGeom" class="reset-btn">Reset</button></div>
+            <div class="card-body grid grid-cols-2 gap-x-4 place-content-center">
+              <div class="grid grid-cols-[auto_1fr] items-center gap-x-2"><label for="lambda">&lambda;</label><input id="lambda" class="form-input" type="number" step="0.01" value="1"></div>
+              <div class="grid grid-cols-[auto_1fr] items-center gap-x-2"><label for="beta">&beta;°</label><input id="beta" class="form-input" type="number" step="1" value="0"></div>
             </div>
-            <div class="box-b grid2x2">
-              <label for="lambda">&lambda;</label>
-              <input id="lambda" class="numb" type="number" step="0.01" value="1">
-              <label for="beta">&beta;°</label>
-              <input id="beta"   class="numb" type="number" step="1" value="0">
+          </div>
+          
+          <div class="control-card">
+            <div class="card-header"><h2 class="card-title">View</h2><button id="viewReset" class="reset-btn">Reset</button></div>
+            <div class="card-body grid grid-cols-3 gap-x-3 place-content-center">
+              <div class="grid grid-cols-[auto_1fr] items-center gap-x-2"><label for="viewX">x</label><input id="viewX" class="form-input" step="0.05" value="0"></div>
+              <div class="grid grid-cols-[auto_1fr] items-center gap-x-2"><label for="viewY">y</label><input id="viewY" class="form-input" step="0.05" value="0"></div>
+              <div class="grid grid-cols-[auto_1fr] items-center gap-x-2"><label for="viewZoom">🔍</label><input id="viewZoom" class="form-input" step="0.1" value="1"></div>
             </div>
           </div>
 
-          <!-- Mode -->
-          <div class="box">
-            <div class="box-h">Mode</div>
-            <div class="box-b grid2x2">
-              <label class="flex items-center gap-1">
-                <input name="plane" type="radio" value="strain" checked> plane strain
-              </label>
-              <label class="flex items-center gap-1">
-                <input name="plane" type="radio" value="stress"> plane stress
-              </label>
+          <div class="control-card">
+            <div class="card-header"><h2 class="card-title">Material</h2><button id="resetMat" class="reset-btn">Reset</button></div>
+            <div class="card-body grid grid-cols-3 gap-x-3 place-content-center">
+                <div class="grid grid-cols-[auto_1fr] items-center gap-x-2"><label for="rho">&Gamma;</label><input id="rho" class="form-input" value="0.10"></div>
+                <div class="grid grid-cols-[auto_1fr] items-center gap-x-2"><label for="nuM">&nu;<sub>M</sub></label><input id="nuM" class="form-input" type="number" value="0.17"></div>
+                <div class="grid grid-cols-[auto_1fr] items-center gap-x-2"><label for="nuP">&nu;<sub>P</sub></label><input id="nuP" class="form-input" type="number" value="0.33"></div>
             </div>
           </div>
-        </div><!-- /small stack -->
-
-        <!-- ───── right‑hand column (View on top, Material below) ───── -->
-        <div class="flex flex-col gap-4">
-
-          <!-- View (small card) -->
-          <div class="box max-w-[370px]">
-            <div class="box-h">
-              <span>View</span>
-              <button id="viewReset"
-                      class="rounded bg-slate-200 px-2 py-0.5 text-xs hover:bg-slate-300">
-                Reset
-              </button>
-            </div>
-            <div class="box-b grid grid-cols-[auto_1fr_auto_1fr_auto_1fr] gap-x-2 items-center">
-              <span>x</span> <input id="viewX"   class="numb" step="0.05" value="0">
-              <span>y</span> <input id="viewY"   class="numb" step="0.05" value="0">
-              <span class="text-[15px]">🔍</span>
-              <input id="viewZoom" class="numb" step="0.1"  value="1">
+          
+          <div class="control-card">
+            <div class="card-header"><h2 class="card-title">Mode</h2></div>
+            <div class="card-body grid grid-cols-3 items-center justify-items-center gap-x-2 place-content-center">
+              <label class="flex items-center gap-1.5 cursor-pointer text-xs"><input name="plane" type="radio" value="strain" checked class="h-4 w-4 accent-sky-600"> plane strain</label>
+              <label class="flex items-center gap-1.5 cursor-pointer text-xs"><input name="plane" type="radio" value="stress" class="h-4 w-4 accent-sky-600"> plane stress</label>
+              <label class="flex items-center gap-1.5 cursor-pointer text-xs"><input id="holeChk" type="checkbox" class="h-4 w-4 rounded accent-sky-600"> Hole</label>
             </div>
           </div>
-
-          <!-- Material (wide card) -->
-          <div class="box max-w-[370px]">
-            <div class="box-h">
-              <span>Material</span>
-              <button id="resetMat"
-                      class="rounded bg-slate-200 px-2 py-0.5 text-xs hover:bg-slate-300">
-                Reset
-              </button>
-            </div>
-            <div class="box-b grid2x2">
-              <label for="rho">&Gamma;</label>
-              <input id="rho" class="numb" value="0.10">
-              <label for="nuM">&nu;<sub>M</sub></label>
-              <input id="nuM" class="numb" type="number" value="0.17" step="0.01">
-              <label for="nuP">&nu;<sub>P</sub></label>
-              <input id="nuP" class="numb" type="number" value="0.33" step="0.01">
-
-              <div></div>
-              <label class="col-span-4 mt-2 flex items-center gap-1 text-xs">
-                <input id="holeChk" type="checkbox">
-                <span class="font-medium">Hole (μ<sub>P</sub>=0)</span>
-              </label>
-            </div>
-          </div>
-
-        </div><!-- /right‑hand column -->
-
-        <!-- ------------ Stress table (full width) ------------------ -->
-        <div class="box col-span-full lg:col-span-2 max-w-[610px]">
-          <div class="box-h">Stress</div>
-          <div class="box-b p-0 overflow-hidden">
-            <table class="w-full text-right text-xs border-collapse">
-              <thead class="bg-slate-100 border-b border-slate-300">
-                <tr>
-                  <th class="px-2 py-1"></th>
-                  <th class="px-2 py-1">max&nbsp;&sigma;</th>
-                  <th class="px-2 py-1">min&nbsp;&sigma;</th>
-                  <th class="px-2 py-1">&sigma;(x,y)</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr class="border-b border-slate-200">
-                  <td class="text-left px-2 py-1">
-                    <label class="flex items-center gap-1">
-                      <input name="comp" type="radio" value="0" checked>
-                      σₓₓ
-                    </label>
-                  </td>
-                  <td id="max_xx" class="px-2 py-1">‑</td>
-                  <td id="min_xx" class="px-2 py-1">‑</td>
-                  <td id="cur_xx" class="px-2 py-1">‑</td>
-                </tr>
-                <tr class="border-b border-slate-200">
-                  <td class="text-left px-2 py-1">
-                    <label class="flex items-center gap-1">
-                      <input name="comp" type="radio" value="1">
-                      σᵧᵧ
-                    </label>
-                  </td>
-                  <td id="max_yy" class="px-2 py-1">‑</td>
-                  <td id="min_yy" class="px-2 py-1">‑</td>
-                  <td id="cur_yy" class="px-2 py-1">‑</td>
-                </tr>
-                <tr>
-                  <td class="text-left px-2 py-1">
-                    <label class="flex items-center gap-1">
-                      <input name="comp" type="radio" value="2">
-                      τₓᵧ
-                    </label>
-                  </td>
-                  <td id="max_xy" class="px-2 py-1">‑</td>
-                  <td id="min_xy" class="px-2 py-1">‑</td>
-                  <td id="cur_xy" class="px-2 py-1">‑</td>
-                </tr>
-              </tbody>
+          
+          <div class="control-card col-span-2">
+            <div class="card-header"><h2 class="card-title">Stress</h2></div>
+            <table class="w-full text-center text-xs">
+                <thead class="bg-slate-50/75 text-slate-600">
+                  <tr class="border-b border-slate-200/75">
+                    <th class="py-1.5 px-3 text-left font-semibold">Component</th>
+                    <th class="py-1.5 px-3 font-semibold">max σ</th>
+                    <th class="py-1.5 px-3 font-semibold">min σ</th>
+                    <th class="py-1.5 px-3 font-semibold">σ(x,y)</th>
+                  </tr>
+                </thead>
+                <tbody class="font-mono">
+                  <tr class="border-b border-slate-200/75">
+                    <td class="py-1.5 px-3 text-left"><label class="font-sans font-medium flex items-center gap-2 cursor-pointer"><input name="comp" type="radio" value="0" checked class="h-4 w-4 accent-sky-600"> σₓₓ</label></td>
+                    <td id="max_xx" class="py-1.5 px-3">‑</td><td id="min_xx" class="py-1.5 px-3">‑</td><td id="cur_xx" class="py-1.5 px-3">‑</td>
+                  </tr>
+                  <tr class="border-b border-slate-200/75">
+                    <td class="py-1.5 px-3 text-left"><label class="font-sans font-medium flex items-center gap-2 cursor-pointer"><input name="comp" type="radio" value="1" class="h-4 w-4 accent-sky-600"> σᵧᵧ</label></td>
+                    <td id="max_yy" class="py-1.5 px-3">‑</td><td id="min_yy" class="py-1.5 px-3">‑</td><td id="cur_yy" class="py-1.5 px-3">‑</td>
+                  </tr>
+                  <tr>
+                    <td class="py-1.5 px-3 text-left"><label class="font-sans font-medium flex items-center gap-2 cursor-pointer"><input name="comp" type="radio" value="2" class="h-4 w-4 accent-sky-600"> τₓᵧ</label></td>
+                    <td id="max_xy" class="py-1.5 px-3">‑</td><td id="min_xy" class="py-1.5 px-3">‑</td><td id="cur_xy" class="py-1.5 px-3">‑</td>
+                  </tr>
+                </tbody>
             </table>
           </div>
-        </div>
-
-        <!-- Colour map card ---------------------------------------- -->
-        <div class="box lg:col-span-2 max-w-[610px]">
-          <div class="box-h">Colour map</div>
-          <div class="box-b space-y-1">
-            <select id="cmap" class="w-full border border-slate-300 rounded px-2 py-1">
-              <option value="0">Rainbow</option><option value="1">Jet</option>
-              <option value="2">Hot</option><option value="3">Cool‑Warm</option>
-              <option value="4">Inv Cool‑Warm</option>
-            </select>
-            <canvas id="legendCanvas" class="h-[14px] w-full rounded"></canvas>
-            <div class="flex justify-between text-[11px] tabular-nums">
-              <span id="legendMin">‑</span><span id="legendMax">‑</span>
+          
+          <div class="control-card col-span-2">
+            <div class="card-header"><h2 class="card-title">Colour map</h2></div>
+            <div class="card-body space-y-3">
+                <select id="cmap" class="w-full border border-slate-300 rounded-md px-2 py-1.5 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-sky-500">
+                  <option value="0">Rainbow</option><option value="1">Jet</option>
+                  <option value="2">Hot</option><option value="3" selected>Cool-Warm</option>
+                  <option value="4">Inv Cool-Warm</option>
+                </select>
+                <canvas id="legendCanvas" class="h-4 w-full rounded-full"></canvas>
+                <div class="flex justify-between text-xs tabular-nums font-medium text-slate-600">
+                  <span id="legendMin">‑</span><span id="legendMax">‑</span>
+                </div>
             </div>
           </div>
+          
+          <div class="col-span-2 pt-1">
+            <button id="btnSave" class="primary-btn">Save PNG</button>
+          </div>
         </div>
+      </div>
+    </aside>
+  </div>
 
-        <!-- Save button ------------------------------------------- -->
-        <button id="btnSave" class="w-full btn-primary lg:col-span-2 max-w-[610px]">
-          Save PNG
-        </button>
-
-      </div><!-- /grid -->
-    </aside><!-- /control column -->
-  </main>
-
-  <footer class="py-4 text-center text-xs text-slate-500">
-    Stress‑field visualiser footnotes
-  </footer>
-
-  <!-- TypeScript / shader bundle ----------------------------------- -->
   <script type="module" src="/src/index.ts"></script>
 </body>
 </html>

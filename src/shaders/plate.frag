@@ -4,7 +4,7 @@ precision highp float;
 /* ── uniforms ───────────────────────────────────────────────────────── */
 uniform float u_r0, u_lambda, u_S, u_beta;
 uniform float u_gamma;              /*  NEW  Γ = μM / μP  (μP=1) */
-uniform float u_kappaM, u_kappaP;
+uniform float u_kappa_m, u_kappa_p;
 
 /* 0→rainbow | 1→jet | 2→hot | 3→cool-warm | 4→inverted cool-warm */
 uniform int   u_cmap;
@@ -104,8 +104,8 @@ void main() {
   A = 0.0;
   B = 0.0;
 }else{
-  A = (1.0 + u_kappaM) / (2.0 + u_gamma * (u_kappaP - 1.0));
-  B = (1.0 + u_kappaM) / (u_gamma + u_kappaM);
+  A = (1.0 + u_kappa_m) / (2.0 + u_gamma * (u_kappa_p - 1.0));
+  B = (1.0 + u_kappa_p) / (u_gamma + u_kappa_m);
 }
 
   float S   = u_S;

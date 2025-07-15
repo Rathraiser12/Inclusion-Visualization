@@ -3,7 +3,7 @@ precision highp float;
 
 /* ---------- uniforms (same naming as plate.frag) ----------------- */
 uniform float u_r0, u_lambda, u_S, u_beta;
-uniform float u_gamma, u_kappaM, u_kappaP;
+uniform float u_gamma, u_kappa_m, u_kappa_p;
 uniform int   u_component;              /* 0 σxx | 1 σyy | 2 τxy */
 uniform float u_zoom, u_aspect;
 uniform vec2  u_pan;
@@ -27,8 +27,8 @@ if(u_hole == 1){
   A = 0.0;
   B = 0.0;
 }else{
-  A = (1.0 + u_kappaM) / (2.0 + u_gamma * (u_kappaP - 1.0));
-  B = (1.0 + u_kappaM) / (u_gamma + u_kappaM);
+  A = (1.0 + u_kappa_m) / (2.0 + u_gamma * (u_kappa_p - 1.0));
+  B = (1.0 + u_kappa_m) / (u_gamma + u_kappa_m);
 }
 
   float S = u_S, lam = u_lambda;

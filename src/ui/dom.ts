@@ -50,6 +50,7 @@ export const inputs = {
     s.value = '0';
     return s as HTMLSelectElement;
   }),
+  plane: document.querySelectorAll<HTMLInputElement>('input[name="plane"]'),
 
   comp  : document.querySelectorAll<HTMLInputElement>('input[name="comp"]'),
 };

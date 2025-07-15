@@ -41,8 +41,8 @@ const UF = {
   lambda:gl.getUniformLocation(finalProg, "u_lambda")!,
   beta :gl.getUniformLocation(finalProg, "u_beta")!,
   gamma:gl.getUniformLocation(finalProg, "u_gamma")!,
-  kM   :gl.getUniformLocation(finalProg, "u_kappaM")!,
-  kP   :gl.getUniformLocation(finalProg, "u_kappaP")!,
+  kappa_m   :gl.getUniformLocation(finalProg, "u_kappa_m")!,
+  kappa_p   :gl.getUniformLocation(finalProg, "u_kappa_p")!,
   S    :gl.getUniformLocation(finalProg, "u_S")!,
   comp :gl.getUniformLocation(finalProg, "u_component")!,
   cmap :gl.getUniformLocation(finalProg, "u_cmap")!,
@@ -79,15 +79,15 @@ holder.append(maxDot, minDot);
 
 /* paint helpers ----------------------------------------------------- */
 function pushUniforms(vmin: number, vmax: number) {
-  const { γ, kM, kP } = currentMaterial();
+  const { gamma, kappa_m, kappa_p } = currentMaterial();
   gl.useProgram(finalProg);
 
   gl.uniform1f(UF.r0, r0);
   gl.uniform1f(UF.lambda, num(inputs.lambda, 1));
   gl.uniform1f(UF.beta,   num(inputs.beta,   0) * Math.PI / 180);
-  gl.uniform1f(UF.gamma,  γ);
-  gl.uniform1f(UF.kM,     kM);
-  gl.uniform1f(UF.kP,     kP);
+  gl.uniform1f(UF.gamma,  gamma);
+  gl.uniform1f(UF.kappa_m,     kappa_m);
+  gl.uniform1f(UF.kappa_p,     kappa_p);
   gl.uniform1f(UF.S,      1);
   gl.uniform1i(UF.comp, +[...inputs.comp].find(r => r.checked)!.value);
   gl.uniform1i(UF.cmap, +inputs.cmap.value);

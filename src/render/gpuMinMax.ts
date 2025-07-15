@@ -27,8 +27,8 @@ const US = {
   lambda : gl.getUniformLocation(stressProg, "u_lambda")!,
   beta   : gl.getUniformLocation(stressProg, "u_beta")!,
   gamma  : gl.getUniformLocation(stressProg, "u_gamma")!,
-  kM     : gl.getUniformLocation(stressProg, "u_kappaM")!,
-  kP     : gl.getUniformLocation(stressProg, "u_kappaP")!,
+  kappa_m     : gl.getUniformLocation(stressProg, "u_kappa_m")!,
+  kappa_p     : gl.getUniformLocation(stressProg, "u_kappa_p")!,
   S      : gl.getUniformLocation(stressProg, "u_S")!,
   comp   : gl.getUniformLocation(stressProg, "u_component")!,
   zoom   : gl.getUniformLocation(stressProg, "u_zoom")!,
@@ -83,12 +83,12 @@ const num = (el: HTMLInputElement, d = 0) =>
 
 /* analytic closed‑form (same as shader) ----------------------------- */
 function analyticStressAt(x: number, y: number) {
-  const { γ, kM, kP } = currentMaterial();
+  const { gamma, kappa_m, kappa_p } = currentMaterial();
   const λ   = num(inputs.lambda, DEF.lambda);
   const β   = num(inputs.beta,   DEF.beta) * Math.PI / 180;
   const S   = 1;
-  const A   = holeChk.checked ? 0 : (1 + kM) / (2 + γ * (kP - 1));
-  const B   = holeChk.checked ? 0 : (1 + kM) / (γ + kM);
+  const A   = holeChk.checked ? 0 : (1 + kappa_m) / (2 + gamma * (kappa_p - 1));
+  const B   = holeChk.checked ? 0 : (1 + kappa_m) / (gamma + kappa_m);
   const c2β = Math.cos(2 * β), s2β = Math.sin(2 * β);
 
   const r = Math.hypot(x, y), θ = Math.atan2(y, x);
@@ -130,7 +130,7 @@ export interface MinMaxLoc {
 
 /** Stress‑component extrema in a single call (GPU + analytic edge scan). */
 export function computeMinMax(comp: 0 | 1 | 2): MinMaxLoc {
-  const { γ, kM, kP } = currentMaterial();
+  const { gamma, kappa_m, kappa_p } = currentMaterial();
 
   /* pass 0 – analytic field → RG32F ---------------------------------- */
   const root = levels[0];
@@ -141,9 +141,9 @@ export function computeMinMax(comp: 0 | 1 | 2): MinMaxLoc {
   gl.uniform1f(US.r0,     r0);
   gl.uniform1f(US.lambda, num(inputs.lambda, DEF.lambda));
   gl.uniform1f(US.beta,   num(inputs.beta,   DEF.beta) * Math.PI / 180);
-  gl.uniform1f(US.gamma,  γ);
-  gl.uniform1f(US.kM,     kM);
-  gl.uniform1f(US.kP,     kP);
+  gl.uniform1f(US.gamma,  gamma);
+  gl.uniform1f(US.kappa_m,     kappa_m);
+  gl.uniform1f(US.kappa_p,     kappa_p);
   gl.uniform1f(US.S,      1);
   gl.uniform1i(US.comp,   comp);
   gl.uniform1f(US.zoom,   1);                 // fixed
