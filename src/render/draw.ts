@@ -158,9 +158,9 @@ canvas.addEventListener('mousemove', e => {
 
 canvas.addEventListener('mouseleave', () => {
   // Clear the values when the mouse leaves the canvas
-  cur_xx.textContent = '‑';
-  cur_yy.textContent = '‑';
-  cur_xy.textContent = '‑';
+  cur_xx.textContent = '-';
+  cur_yy.textContent = '-';
+  cur_xy.textContent = '-';
 });
 
 /* DPR resize -------------------------------------------------------- */

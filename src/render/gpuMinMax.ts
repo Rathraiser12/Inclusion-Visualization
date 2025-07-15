@@ -1,4 +1,4 @@
-/*  GPU reduction pyramid + analytic edge scan
+/* GPU reduction pyramid + analytic edge scan
     ---------------------------------------------------------
     Responsible for:
     • building an RG32F mip‑pyramid (1024² → 1×1)
@@ -23,22 +23,22 @@ const reduceProg = link(gl, vertSrc, reduceFragSrc);
 
 /* shader uniforms --------------------------------------------------- */
 const US = {
-  r0     : gl.getUniformLocation(stressProg, "u_r0")!,
-  lambda : gl.getUniformLocation(stressProg, "u_lambda")!,
-  beta   : gl.getUniformLocation(stressProg, "u_beta")!,
-  gamma  : gl.getUniformLocation(stressProg, "u_gamma")!,
-  kappa_m     : gl.getUniformLocation(stressProg, "u_kappa_m")!,
-  kappa_p     : gl.getUniformLocation(stressProg, "u_kappa_p")!,
-  S      : gl.getUniformLocation(stressProg, "u_S")!,
-  comp   : gl.getUniformLocation(stressProg, "u_component")!,
-  zoom   : gl.getUniformLocation(stressProg, "u_zoom")!,
-  pan    : gl.getUniformLocation(stressProg, "u_pan")!,
-  asp    : gl.getUniformLocation(stressProg, "u_aspect")!,
-  hole   : gl.getUniformLocation(stressProg, "u_hole")!,
+  r0:       gl.getUniformLocation(stressProg, "u_r0")!,
+  lambda:   gl.getUniformLocation(stressProg, "u_lambda")!,
+  beta:     gl.getUniformLocation(stressProg, "u_beta")!,
+  gamma:    gl.getUniformLocation(stressProg, "u_gamma")!,
+  kappa_m:  gl.getUniformLocation(stressProg, "u_kappa_m")!,
+  kappa_p:  gl.getUniformLocation(stressProg, "u_kappa_p")!,
+  S:        gl.getUniformLocation(stressProg, "u_S")!,
+  comp:     gl.getUniformLocation(stressProg, "u_component")!,
+  zoom:     gl.getUniformLocation(stressProg, "u_zoom")!,
+  pan:      gl.getUniformLocation(stressProg, "u_pan")!,
+  asp:      gl.getUniformLocation(stressProg, "u_aspect")!,
+  hole:     gl.getUniformLocation(stressProg, "u_hole")!,
 };
 const UR = {
-  src  : gl.getUniformLocation(reduceProg, "u_src")!,
-  step : gl.getUniformLocation(reduceProg, "u_step")!,
+  src:  gl.getUniformLocation(reduceProg, "u_src")!,
+  step: gl.getUniformLocation(reduceProg, "u_step")!,
 };
 
 /* full‑screen quad (one VAO shared by every pass) ------------------- */
@@ -84,42 +84,43 @@ const num = (el: HTMLInputElement, d = 0) =>
 /* analytic closed‑form (same as shader) ----------------------------- */
 export function analyticStressAt(x: number, y: number) {
   const { gamma, kappa_m, kappa_p } = currentMaterial();
-  const λ   = num(inputs.lambda, DEF.lambda);
-  const β   = num(inputs.beta,   DEF.beta) * Math.PI / 180;
-  const S   = 1;
-  const A   = holeChk.checked ? 0 : (1 + kappa_m) / (2 + gamma * (kappa_p - 1));
-  const B   = holeChk.checked ? 0 : (1 + kappa_m) / (gamma + kappa_m);
-  const c2β = Math.cos(2 * β), s2β = Math.sin(2 * β);
+  const lambda = num(inputs.lambda, DEF.lambda);
+  const beta   = num(inputs.beta,   DEF.beta) * Math.PI / 180;
+  const S   = 1.0;
+  const A   = holeChk.checked ? 0 : (1.0 + kappa_m) / (2.0 + gamma * (kappa_p - 1.0));
+  const B   = holeChk.checked ? 0 : (1.0 + kappa_m) / (gamma + kappa_m);
+  const c2b = Math.cos(2.0 * beta), s2b = Math.sin(2.0 * beta);
 
-  const r = Math.hypot(x, y), θ = Math.atan2(y, x);
+  const r = Math.hypot(x, y), theta = Math.atan2(y, x);
   let sxx, syy, txy;
 
   if (r <= r0) {
-    sxx = 0.5 * S * ((λ + 1) * A + (1- λ ) * B * c2β);
-    syy = 0.5 * S * ((λ + 1) * A - (1-λ) * B * c2β);
-    txy = 0.5 * S * (1-λ ) * B * s2β;
+    sxx = 0.5 * S * ((lambda + 1.0) * A + (1.0 - lambda) * B * c2b);
+    syy = 0.5 * S * ((lambda + 1.0) * A - (1.0 - lambda) * B * c2b);
+    txy = 0.5 * S * (1.0 - lambda) * B * s2b;
   } else {
     const rr2 = (r0 * r0) / (r * r);
     const rr4 = rr2 * rr2;
-    const c2θ = Math.cos(2 * θ), s2θ = Math.sin(2 * θ);
-    sxx = 0.5 * S * (λ + 1) * (1 - (1 - A) * rr2 * c2θ)
-        + 0.5 * S * (1-λ ) *
-          ( c2β
-          + (1 - B) *
-            (3 * rr4 * Math.cos(4 * θ - 2 * β)
-             -4 * rr2 * Math.cos(2 * β - 3 * θ) * Math.cos(θ)));
-    syy = 0.5 * S * (λ + 1) * (1 + (1 - A) * rr2 * c2θ)
-        - 0.5 * S * (1-λ ) *
-          ( c2β
-          + (1 - B) *
-            (3 * rr4 * Math.cos(4 * θ - 2 * β)
-             -4 * rr2 * Math.sin(2 * β - 3 * θ) * Math.sin(θ)));
-    txy =-0.5 * S * (λ + 1) * (1 - A) * rr2 * s2θ
-        + 0.5 * S * (1-λ) *
-          ( s2β + (1 - B) * (3 * rr4 - 2 * rr2) * Math.sin(4 * θ - 2 * β));
+    const c2t = Math.cos(2.0 * theta), s2t = Math.sin(2.0 * theta);
+    sxx = 0.5 * S * (lambda + 1.0) * (1.0 - (1.0 - A) * rr2 * c2t)
+        + 0.5 * S * (1.0-lambda ) *
+          ( c2b
+          + (1.0 - B) *
+            (3.0 * rr4 * Math.cos(4.0 * theta - 2.0* beta)
+             -4.0 * rr2 * Math.cos(2.0 * beta - 3.0 * theta) * Math.cos(theta)));
+    syy = 0.5 * S * (lambda + 1.0) * (1.0 + (1.0 - A) * rr2 * c2t)
+        - 0.5 * S * (1.0-lambda ) *
+          ( c2b
+          + (1.0 - B) *
+            (3.0 * rr4 * Math.cos(4.0 * theta - 2.0 * beta)
+             -4.0 * rr2 * Math.sin(2.0 * beta - 3.0 * theta) * Math.sin(theta)));
+    txy =-0.5 * S * (lambda + 1.0) * (1.0 - A) * rr2 * s2t
+        + 0.5 * S * (1.0-lambda) *
+          ( s2b + (1.0 - B) * (3.0 * rr4 - 2.0 * rr2) * Math.sin(4.0 * theta - 2.0 * beta));
   }
   return [sxx, syy, txy] as const;
 }
+
 
 /* public API --------------------------------------------------------- */
 export interface MinMaxLoc {
@@ -128,11 +129,36 @@ export interface MinMaxLoc {
   ixMax: number; iyMax: number;
 }
 
+const memoCache = new Map<string, MinMaxLoc>();
+
+/**
+ * Creates a unique key from all inputs that affect the calculation.
+ */
+function getCacheKey(comp: 0 | 1 | 2): string {
+  const { gamma, kappa_m, kappa_p } = currentMaterial();
+  const values = [
+    comp,
+    num(inputs.lambda, DEF.lambda),
+    num(inputs.beta, DEF.beta),
+    gamma,
+    kappa_m,
+    kappa_p,
+    holeChk.checked,
+  ];
+  return values.join('|');
+}
+
+
 /** Stress‑component extrema in a single call (GPU + analytic edge scan). */
 export function computeMinMax(comp: 0 | 1 | 2): MinMaxLoc {
+  const key = getCacheKey(comp);
+  if (memoCache.has(key)) {
+    return memoCache.get(key)!;
+  }
+
   const { gamma, kappa_m, kappa_p } = currentMaterial();
 
-  /* pass 0 – analytic field → RG32F ---------------------------------- */
+  /* pass 0 – analytic field → RG32F ---------------------------------- */
   const root = levels[0];
   gl.bindFramebuffer(gl.FRAMEBUFFER, root.fbo);
   gl.viewport(0, 0, root.w, root.h);
@@ -142,8 +168,8 @@ export function computeMinMax(comp: 0 | 1 | 2): MinMaxLoc {
   gl.uniform1f(US.lambda, num(inputs.lambda, DEF.lambda));
   gl.uniform1f(US.beta,   num(inputs.beta,   DEF.beta) * Math.PI / 180);
   gl.uniform1f(US.gamma,  gamma);
-  gl.uniform1f(US.kappa_m,     kappa_m);
-  gl.uniform1f(US.kappa_p,     kappa_p);
+  gl.uniform1f(US.kappa_m,kappa_m);
+  gl.uniform1f(US.kappa_p,kappa_p);
   gl.uniform1f(US.S,      1);
   gl.uniform1i(US.comp,   comp);
   gl.uniform1f(US.zoom,   1);                 // fixed
@@ -177,12 +203,12 @@ export function computeMinMax(comp: 0 | 1 | 2): MinMaxLoc {
   let vmax = rg[1];
 
   /* edge samples (closed form) -------------------------------------- */
-  const N = 900;                              // 0.4 ° steps
+  const N = 900;                              // 0.4° steps
   for (let i = 0; i < N; ++i) {
-    const θ = (i / N) * 2 * Math.PI;
+    const theta = (i / N) * 2 * Math.PI;
     const [sxx, syy, txy] = analyticStressAt(
-      r0 * Math.cos(θ),
-      r0 * Math.sin(θ),
+      r0 * Math.cos(theta),
+      r0 * Math.sin(theta),
     );
     const val = comp === 0 ? sxx : comp === 1 ? syy : txy;
     if (val < vmin) vmin = val;
@@ -201,11 +227,23 @@ export function computeMinMax(comp: 0 | 1 | 2): MinMaxLoc {
     if (v < vminLoc) { vminLoc = v; imin = i; }
     if (v > vmaxLoc) { vmaxLoc = v; imax = i; }
   }
-  return {
+  
+  const result: MinMaxLoc = {
     vmin, vmax,
     ixMin: imin % root.w, iyMin: (imin / root.w) | 0,
     ixMax: imax % root.w, iyMax: (imax / root.w) | 0,
   };
+
+  memoCache.set(key, result);
+  
+  if (memoCache.size > 50) {
+    const oldestKey = memoCache.keys().next().value;
+    if (oldestKey) {
+      memoCache.delete(oldestKey);
+    }
+  }
+
+  return result;
 }
 
 /* texel → CSS‑pixel -------------------------------------------------- */

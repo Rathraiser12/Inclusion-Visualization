@@ -105,7 +105,7 @@ void main() {
   B = 0.0;
 }else{
   A = (1.0 + u_kappa_m) / (2.0 + u_gamma * (u_kappa_p - 1.0));
-  B = (1.0 + u_kappa_p) / (u_gamma + u_kappa_m);
+  B = (1.0 + u_kappa_m) / (u_gamma + u_kappa_m);
 }
 
   float S   = u_S;

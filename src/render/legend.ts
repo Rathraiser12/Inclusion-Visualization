@@ -64,7 +64,16 @@ export const mapColour = (t: number): RGB => {
   }
 };
 
+let lastLegendMin: number | undefined = undefined;
+let lastLegendMax: number | undefined = undefined;
+
 export function drawLegend(min: number, max: number) {
+  // --- Add this check at the beginning of the function ---
+  // If the min/max values haven't changed, do nothing.
+  if (min === lastLegendMin && max === lastLegendMax) {
+    return;
+  }
+
   const w = legendCanvas.clientWidth || 1,
         h = legendCanvas.clientHeight || 1;
   if (legendCanvas.width !== w || legendCanvas.height !== h) {
@@ -85,4 +94,8 @@ export function drawLegend(min: number, max: number) {
   legendCtx.putImageData(img, 0, 0);
   legendMinTxt.textContent = min.toFixed(2);
   legendMaxTxt.textContent = max.toFixed(2);
+  
+  // --- Update the cache with the new values ---
+  lastLegendMin = min;
+  lastLegendMax = max;
 }
