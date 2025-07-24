@@ -1,4 +1,5 @@
 // src/ui/controls.ts
+import { clampNu } from '../core/math';
 import { btnSave, canvas, holeChk, inputs, resetGeom, resetMat } from './dom';
 
 // Default values needed for reset and hole mode logic
@@ -56,5 +57,27 @@ export function setupUI() {
   });
   inputs.nuP.addEventListener('input', () => {
     holeChk.checked = false;
+  });
+
+  // --- Input Clamping ---
+  // Add blur listeners to clamp Poisson's ratio inputs
+  inputs.nuM.addEventListener('blur', () => {
+    const value = parseFloat(inputs.nuM.value);
+    // If the input is a valid number, update it to the clamped value.
+    // Otherwise, reset to the default.
+    if (Number.isFinite(value)) {
+      inputs.nuM.value = clampNu(value).toString();
+    } else {
+      inputs.nuM.value = DEFAULTS.nuM.toString();
+    }
+  });
+
+  inputs.nuP.addEventListener('blur', () => {
+    const value = parseFloat(inputs.nuP.value);
+    if (Number.isFinite(value)) {
+      inputs.nuP.value = clampNu(value).toString();
+    } else {
+      inputs.nuP.value = DEFAULTS.nuP.toString();
+    }
   });
 }

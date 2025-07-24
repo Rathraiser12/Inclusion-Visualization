@@ -1,93 +1,79 @@
-/*  Frame orchestrator
+/* Frame orchestrator
     ------------------
     • ties UI → GPU
     • paints final colour pass
     • updates legend, table, and min/max dots           */
 
-import { canvas,
-         legendCanvas, legendMinTxt, legendMaxTxt,
-         inputs,holeChk,
+import { canvas, inputs, holeChk,
          cur_xx, cur_yy, cur_xy,
          min_xx, max_xx, min_yy, max_yy, min_xy, max_xy }   from "../ui/dom";
 import { getContext, link }               from "../core/gl";
-import { vertSrc, fragSrc }               from "../shaders";
+import { vertSrc, stressSrc } from "../shaders";
 import { currentMaterial }                from "../core/material";
 import { zoom, panX, panY }               from "./panzoom";
 import { computeMinMax, texelToCanvas, analyticStressAt }   from "./gpuMinMax";
 import { drawLegend }                     from "./legend";
 
-/* ------------------------------------------------------------------ */
 const gl = getContext(canvas);
 const r0 = 0.25;
 
-/* programmes & fullscreen quad ------------------------------------- */
-const finalProg = link(gl, vertSrc, fragSrc);
+// --- FIX: Correctly insert the preprocessor directive ---
+// The #version directive must be the absolute first line of the shader.
+// We split the source, insert our #define, and then rejoin it.
+const fragSrcLines = stressSrc.split('\n');
+const finalFragSrcWithDefine = [
+    fragSrcLines[0],
+    '#define IS_PLATE_FRAG',
+    ...fragSrcLines.slice(1)
+].join('\n');
+
+const finalProg = link(gl, vertSrc, finalFragSrcWithDefine);
+
 
 const vao = gl.createVertexArray()!;
 gl.bindVertexArray(vao);
 const vbo = gl.createBuffer()!;
 gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
-gl.bufferData(
-  gl.ARRAY_BUFFER,
-  new Float32Array([-1,-1, 1,-1, -1,1,  -1,1, 1,-1, 1,1]),
-  gl.STATIC_DRAW,
-);
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1,  -1,1, 1,-1, 1,1]), gl.STATIC_DRAW);
 gl.enableVertexAttribArray(0);
 gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
 
-/* uniforms ---------------------------------------------------------- */
 const UF = {
-  r0   : gl.getUniformLocation(finalProg, "u_r0")!,
-  lambda:gl.getUniformLocation(finalProg, "u_lambda")!,
-  beta :gl.getUniformLocation(finalProg, "u_beta")!,
-  gamma:gl.getUniformLocation(finalProg, "u_gamma")!,
-  kappa_m   :gl.getUniformLocation(finalProg, "u_kappa_m")!,
-  kappa_p   :gl.getUniformLocation(finalProg, "u_kappa_p")!,
-  S    :gl.getUniformLocation(finalProg, "u_S")!,
-  comp :gl.getUniformLocation(finalProg, "u_component")!,
-  cmap :gl.getUniformLocation(finalProg, "u_cmap")!,
-  minV :gl.getUniformLocation(finalProg, "u_minVal")!,
-  maxV :gl.getUniformLocation(finalProg, "u_maxVal")!,
-  zoom :gl.getUniformLocation(finalProg, "u_zoom")!,
-  pan  :gl.getUniformLocation(finalProg, "u_pan")!,
-  asp  :gl.getUniformLocation(finalProg, "u_aspect")!,
-  hole :gl.getUniformLocation(finalProg, "u_hole")!,
+  r0: gl.getUniformLocation(finalProg, "u_r0")!, lambda: gl.getUniformLocation(finalProg, "u_lambda")!,
+  beta: gl.getUniformLocation(finalProg, "u_beta")!, gamma: gl.getUniformLocation(finalProg, "u_gamma")!,
+  kappa_m: gl.getUniformLocation(finalProg, "u_kappa_m")!, kappa_p: gl.getUniformLocation(finalProg, "u_kappa_p")!,
+  S: gl.getUniformLocation(finalProg, "u_S")!, comp: gl.getUniformLocation(finalProg, "u_component")!,
+  cmap: gl.getUniformLocation(finalProg, "u_cmap")!, minV: gl.getUniformLocation(finalProg, "u_minVal")!,
+  maxV: gl.getUniformLocation(finalProg, "u_maxVal")!, zoom: gl.getUniformLocation(finalProg, "u_zoom")!,
+  pan: gl.getUniformLocation(finalProg, "u_pan")!, asp: gl.getUniformLocation(finalProg, "u_aspect")!,
+  hole: gl.getUniformLocation(finalProg, "u_hole")!,
 };
 
-/* helper ------------------------------------------------------------ */
-const num = (el: HTMLInputElement, d = 0) =>
-  Number.isFinite(el.valueAsNumber) ? el.valueAsNumber : d;
+const num = (el: HTMLInputElement, d = 0) => Number.isFinite(el.valueAsNumber) ? el.valueAsNumber : d;
 
-/* screen‑space extrema dots ---------------------------------------- */
 const maxDot = document.createElement("div");
 const minDot = document.createElement("div");
 for (const d of [maxDot, minDot]) {
   Object.assign(d.style, {
-    position: "absolute",
-    width: "8px",
-    height: "8px",
-    borderRadius: "50%",
-    border: "2px solid #fff",
-    pointerEvents: "none",
+    position: "absolute", width: "8px", height: "8px",
+    borderRadius: "50%", border: "2px solid #fff", pointerEvents: "none",
   });
 }
-maxDot.style.background = "#d00";            // red  = max
-minDot.style.background = "#00d";            // blue = min
+maxDot.style.background = "#d00";
+minDot.style.background = "#00d";
 const holder = canvas.parentElement as HTMLElement;
 holder.style.position = "relative";
 holder.append(maxDot, minDot);
 
-/* paint helpers ----------------------------------------------------- */
 function pushUniforms(vmin: number, vmax: number) {
   const { gamma, kappa_m, kappa_p } = currentMaterial();
   gl.useProgram(finalProg);
-
   gl.uniform1f(UF.r0, r0);
   gl.uniform1f(UF.lambda, num(inputs.lambda, 1));
   gl.uniform1f(UF.beta,   num(inputs.beta,   0) * Math.PI / 180);
   gl.uniform1f(UF.gamma,  gamma);
-  gl.uniform1f(UF.kappa_m,     kappa_m);
-  gl.uniform1f(UF.kappa_p,     kappa_p);
+  gl.uniform1f(UF.kappa_m, kappa_m);
+  gl.uniform1f(UF.kappa_p, kappa_p);
   gl.uniform1f(UF.S,      1);
   gl.uniform1i(UF.comp, +[...inputs.comp].find(r => r.checked)!.value);
   gl.uniform1i(UF.cmap, +inputs.cmap.value);
@@ -100,20 +86,18 @@ function pushUniforms(vmin: number, vmax: number) {
 }
 
 function updateGlobalTable() {
-  const [mnxx, mxxx] = [computeMinMax(0).vmin, computeMinMax(0).vmax];
-  const [mnyy, mxyy] = [computeMinMax(1).vmin, computeMinMax(1).vmax];
-  const [mnxy, mxxy] = [computeMinMax(2).vmin, computeMinMax(2).vmax];
+  const { vmin: mnxx, vmax: mxxx } = computeMinMax(0);
+  const { vmin: mnyy, vmax: mxyy } = computeMinMax(1);
+  const { vmin: mnxy, vmax: mxxy } = computeMinMax(2);
   min_xx.textContent = mnxx.toFixed(2); max_xx.textContent = mxxx.toFixed(2);
   min_yy.textContent = mnyy.toFixed(2); max_yy.textContent = mxyy.toFixed(2);
   min_xy.textContent = mnxy.toFixed(2); max_xy.textContent = mxxy.toFixed(2);
 }
 
-/* main frame -------------------------------------------------------- */
 function frame() {
   const comp = +[...inputs.comp].find(r => r.checked)!.value as 0 | 1 | 2;
   const { vmin, vmax, ixMin, iyMin, ixMax, iyMax } = computeMinMax(comp);
 
-  /* update dot positions */
   const ptMax = texelToCanvas(ixMax, iyMax);
   const ptMin = texelToCanvas(ixMin, iyMin);
   maxDot.style.left = `${ptMax.cx - 4}px`; maxDot.style.top = `${ptMax.cy - 4}px`;
@@ -129,41 +113,28 @@ function frame() {
 
   requestAnimationFrame(frame);
 }
-/* ------------------------------------------------------------------ */
-/* Mouse probe for analytic stress                                    */
-/* ------------------------------------------------------------------ */
 
 canvas.addEventListener('mousemove', e => {
   const rect = canvas.getBoundingClientRect();
   const cssX = e.clientX - rect.left;
   const cssY = e.clientY - rect.top;
-
-  // Convert CSS pixels to Normalized Device Coordinates [-1, 1]
   const ndcX = (cssX / canvas.clientWidth) * 2 - 1;
   const ndcY = 1 - (cssY / canvas.clientHeight) * 2;
-
-  // Convert NDC to world coordinates, accounting for pan, zoom, and aspect ratio
   const aspect = canvas.clientWidth / canvas.clientHeight;
   const worldX = (ndcX * aspect + panX) / zoom;
   const worldY = (ndcY + panY) / zoom;
-
-  // Calculate stress at the cursor's world position
   const [sxx, syy, txy] = analyticStressAt(worldX, worldY);
-
-  // Update the UI table
   cur_xx.textContent = sxx.toFixed(2);
   cur_yy.textContent = syy.toFixed(2);
   cur_xy.textContent = txy.toFixed(2);
 });
 
 canvas.addEventListener('mouseleave', () => {
-  // Clear the values when the mouse leaves the canvas
-  cur_xx.textContent = '-';
-  cur_yy.textContent = '-';
-  cur_xy.textContent = '-';
+  cur_xx.textContent = '‑';
+  cur_yy.textContent = '‑';
+  cur_xy.textContent = '‑';
 });
 
-/* DPR resize -------------------------------------------------------- */
 function resize() {
   const dpr = window.devicePixelRatio || 1;
   canvas.width  = canvas.clientWidth  * dpr;
@@ -171,10 +142,8 @@ function resize() {
   gl.viewport(0, 0, canvas.width, canvas.height);
 }
 window.addEventListener("resize", resize);
-resize();
 
-/* kick‑off ---------------------------------------------------------- */
 export function initRender() {
-  resize();                   // make sure canvas fits DPR on first call
+  resize();
   requestAnimationFrame(frame);
 }

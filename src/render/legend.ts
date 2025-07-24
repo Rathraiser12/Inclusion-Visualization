@@ -3,7 +3,7 @@ import { legendCanvas, legendCtx,
          legendMinTxt, legendMaxTxt, inputs } from '../ui/dom';
 type RGB = [number, number, number]; 
 
-const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
+//const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 const hsv2rgb = (h: number, s = 1, v = 1): RGB => {
   const c = v * s, h6 = h / 60, x = c * (1 - Math.abs(h6 % 2 - 1)), m = v - c;
   let r = 0, g = 0, b = 0;
@@ -43,15 +43,13 @@ function cmapHot(t: number): RGB {
 }
 
 /** Cool‑Warm diverging palette (blue ↔ red) */
-function cmapCoolWarm(t: number): RGB {
-  // simple linear blend between two chosen RGB endpoints
-  const cold: RGB = [59 / 255, 76 / 255, 192 / 255];   // blue
-  const warm: RGB = [180 / 255, 4 / 255, 38 / 255];    // red
-  return [
-    cold[0] + t * (warm[0] - cold[0]),
-    cold[1] + t * (warm[1] - cold[1]),
-    cold[2] + t * (warm[2] - cold[2]),
-  ];
+function cmapCoolWarm(t:number):RGB{
+  const cold:[number,number,number]=[0.23,0.30,0.75];
+  const white:[number,number,number]=[0.86,0.87,0.91];
+  const warm:[number,number,number]=[0.70,0.02,0.15];
+  return t<0.5
+    ? cold.map((c,i)=>c+(white[i]-c)*t*2) as RGB
+    : white.map((c,i)=>c+(warm[i]-c)*(t-0.5)*2) as RGB;
 }
 
 export const mapColour = (t: number): RGB => {

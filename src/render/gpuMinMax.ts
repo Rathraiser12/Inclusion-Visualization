@@ -1,23 +1,17 @@
 /*
     GPU-based stress field calculation + conditional analytic edge scan
-    -------------------------------------------------------------------
-    Responsible for:
-    • building an RG32F texture of the stress field
-    • scanning the texture for min/max locations and values
-    • conditionally refining the min/max range with an edge scan for the hole case
 */
-
 import { canvas, inputs, holeChk } from "../ui/dom";
 import { currentMaterial }         from "../core/material";
 import { getContext, link }        from "../core/gl";
 import * as view                   from "./panzoom";
-import { vertSrc, stressRGSrc }    from "../shaders";
+import { vertSrc, stressSrc } from "../shaders";
 
 const gl  = getContext(canvas);
 const r0  = 0.25;
 const DEF = { lambda: 1, beta: 0 };
 
-const stressProg = link(gl, vertSrc, stressRGSrc);
+const stressProg = link(gl, vertSrc, stressSrc);
 
 const US = {
   r0:       gl.getUniformLocation(stressProg, "u_r0")!,
@@ -56,7 +50,6 @@ gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
 const num = (el: HTMLInputElement, d = 0) => Number.isFinite(el.valueAsNumber) ? el.valueAsNumber : d;
 
-// Using the (1 - lambda) convention as confirmed correct.
 export function analyticStressAt(x: number, y: number) {
     const { gamma, kappa_m, kappa_p } = currentMaterial();
     const lambda = num(inputs.lambda, DEF.lambda);
@@ -77,6 +70,7 @@ export function analyticStressAt(x: number, y: number) {
         sxx = 0.5 * S * (lambda + 1) * (1 - (1 - A) * rr2 * c2t) + 0.5 * S * (1 - lambda) * (c2b + (1 - B) * (3 * rr4 * Math.cos(4 * theta - 2 * beta) - 4 * rr2 * Math.cos(2 * beta - 3 * theta) * Math.cos(theta)));
         syy = 0.5 * S * (lambda + 1) * (1 + (1 - A) * rr2 * c2t) - 0.5 * S * (1 - lambda) * (c2b + (1 - B) * (3 * rr4 * Math.cos(4 * theta - 2 * beta) - 4 * rr2 * Math.sin(2 * beta - 3 * theta) * Math.sin(theta)));
         txy = -0.5 * S * (lambda + 1) * (1 - A) * rr2 * s2t + 0.5 * S * (1 - lambda) * (s2b + (1 - B) * (3 * rr4 - 2 * rr2) * Math.sin(4 * theta - 2 * beta));
+        
     }
     return [sxx, syy, txy] as const;
 }
@@ -136,8 +130,6 @@ export function computeMinMax(comp: 0 | 1 | 2): MinMaxLoc {
   let vmin = vminTexture;
   let vmax = vmaxTexture;
   
-  
-  // Only run the analytic edge scan if the "Hole" checkbox is checked.
   if (holeChk.checked) {
     const N = 900;
     for (let i = 0; i < N; ++i) {

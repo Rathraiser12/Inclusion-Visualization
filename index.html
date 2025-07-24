@@ -10,6 +10,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
 
   <style type="text/tailwindcss">
+    html { font-size: 13px; }
     body { @apply font-sans antialiased text-slate-700; }
     .control-card { @apply bg-white border border-slate-200/75 rounded-lg shadow-sm flex flex-col; }
     .card-header { @apply bg-slate-50/75 border-b border-slate-200/75 px-3 py-2 flex justify-between items-center; }
@@ -18,6 +19,18 @@
     .form-input { @apply w-full bg-slate-50 border border-slate-200 rounded-md px-2 py-1 text-sm text-right tabular-nums focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500; }
     .reset-btn { @apply text-xs font-medium text-slate-500 hover:text-sky-600; }
     .primary-btn { @apply w-full rounded-lg bg-sky-600 text-white py-2.5 text-sm font-semibold shadow-sm hover:bg-sky-700 active:bg-sky-800; }
+    .info-icon { @apply text-xs text-slate-400 cursor-help hover:text-sky-600; }
+        /* --- ADD THIS CODE BLOCK --- */
+    /* Hide the arrows on number inputs */
+    input[type=number]::-webkit-inner-spin-button,
+    input[type=number]::-webkit-outer-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    input[type=number] {
+      -moz-appearance: textfield; /* For Firefox */
+    }
+    /* --------------------------- */
   </style>
 </head>
 
@@ -36,15 +49,15 @@
         </div>
     </main>
 
-    <aside class="w-full max-w-2xl h-full flex-shrink-0 bg-slate-50 border-l border-slate-200 overflow-y-auto">
+    <aside class="w-full max-w-3xl h-full flex-shrink-0 bg-slate-50 border-l border-slate-200 overflow-y-auto">
       <div class="p-4">
         
         <div class="grid grid-cols-2 gap-3">
           <div class="control-card">
             <div class="card-header"><h2 class="card-title">Geometry & load</h2><button id="resetGeom" class="reset-btn">Reset</button></div>
             <div class="card-body grid grid-cols-2 gap-x-4 place-content-center">
-              <div class="grid grid-cols-[auto_1fr] items-center gap-x-2"><label for="lambda">&lambda;</label><input id="lambda" class="form-input" type="number" step="0.01" value="1"></div>
-              <div class="grid grid-cols-[auto_1fr] items-center gap-x-2"><label for="beta">&beta;°</label><input id="beta" class="form-input" type="number" step="1" value="0"></div>
+              <div class="grid grid-cols-[auto_auto_1fr] items-center gap-x-2"><label for="lambda">&lambda;</label><span id="lambda-info" class="info-icon">ⓘ</span><input id="lambda" class="form-input" type="number" step="0.01" value="1"></div>
+              <div class="grid grid-cols-[auto_auto_1fr] items-center gap-x-2"><label for="beta">&beta;°</label><span id="beta-info" class="info-icon">ⓘ</span><input id="beta" class="form-input" type="number" step="1" value="0"></div>
             </div>
           </div>
           
@@ -60,9 +73,9 @@
           <div class="control-card">
             <div class="card-header"><h2 class="card-title">Material</h2><button id="resetMat" class="reset-btn">Reset</button></div>
             <div class="card-body grid grid-cols-3 gap-x-3 place-content-center">
-                <div class="grid grid-cols-[auto_1fr] items-center gap-x-2"><label for="rho">&Gamma;</label><input id="rho" class="form-input" value="0.10"></div>
-                <div class="grid grid-cols-[auto_1fr] items-center gap-x-2"><label for="nuM">&nu;<sub>M</sub></label><input id="nuM" class="form-input" type="number" value="0.17"></div>
-                <div class="grid grid-cols-[auto_1fr] items-center gap-x-2"><label for="nuP">&nu;<sub>P</sub></label><input id="nuP" class="form-input" type="number" value="0.33"></div>
+                <div class="grid grid-cols-[auto_auto_1fr] items-center gap-x-2"><label for="rho">&Gamma;</label><span id="gamma-info" class="info-icon">ⓘ</span><input id="rho" class="form-input" value="0.10"></div>
+                <div class="grid grid-cols-[auto_auto_1fr] items-center gap-x-2"><label for="nuM">&nu;<sub>M</sub></label><span id="num-info" class="info-icon">ⓘ</span><input id="nuM" class="form-input" type="number" value="0.17"></div>
+                <div class="grid grid-cols-[auto_auto_1fr] items-center gap-x-2"><label for="nuP">&nu;<sub>P</sub></label><span id="nup-info" class="info-icon">ⓘ</span><input id="nuP" class="form-input" type="number" value="0.33"></div>
             </div>
           </div>
           

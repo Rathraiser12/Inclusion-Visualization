@@ -9,12 +9,13 @@ export interface Material {
 }
 
 export function currentMaterial(): Material {
-  /* hole‑mode makes Γ irrelevant but keep a tiny number to avoid /0 */
+  /* hole‑mode makes Γ irrelevant but keep a tiny number to avoid 0 */
   const holeMode = holeChk.checked;
 
   const rawGamma = inputs.rho.value.trim();
   const gamma    = holeMode ? 0.1 : Math.max(0, parseFloat(rawGamma) || 0.00000000001);
- /* doesnt matter the value because when hole is checked alpha aand beta values are set ot 0 and gamma doenst play any role*/
+ // AFTER
+// The specific gamma value doesn't matter in hole mode, as its contribution is cancelled out.
   const nu_m   = clampNu(parseFloat(inputs.nuM.value) || 0.17);
   const nu_p   = clampNu(parseFloat(inputs.nuP.value) || 0.33);
 
