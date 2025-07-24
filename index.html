@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
-
+  
   <style type="text/tailwindcss">
     html { font-size: 13px; }
     body { @apply font-sans antialiased text-slate-700; }
@@ -20,7 +20,7 @@
     .reset-btn { @apply text-xs font-medium text-slate-500 hover:text-sky-600; }
     .primary-btn { @apply w-full rounded-lg bg-sky-600 text-white py-2.5 text-sm font-semibold shadow-sm hover:bg-sky-700 active:bg-sky-800; }
     .info-icon { @apply text-xs text-slate-400 cursor-help hover:text-sky-600; }
-        /* --- ADD THIS CODE BLOCK --- */
+    
     /* Hide the arrows on number inputs */
     input[type=number]::-webkit-inner-spin-button,
     input[type=number]::-webkit-outer-spin-button {
@@ -30,7 +30,6 @@
     input[type=number] {
       -moz-appearance: textfield; /* For Firefox */
     }
-    /* --------------------------- */
   </style>
 </head>
 
@@ -44,7 +43,8 @@
 
   <div class="flex-1 flex overflow-hidden">
     <main class="flex-1 p-6 flex items-center justify-center">
-        <div class="w-full h-full bg-white rounded-lg shadow-inner ring-1 ring-slate-200">
+        <!-- FIX: Added relative and overflow-hidden to constrain the HTML dots -->
+        <div class="w-full h-full bg-white rounded-lg shadow-inner ring-1 ring-slate-200 relative overflow-hidden">
           <canvas id="glCanvas" class="w-full h-full block rounded-lg"></canvas>
         </div>
     </main>
