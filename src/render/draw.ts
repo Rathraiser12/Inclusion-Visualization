@@ -75,7 +75,7 @@ const num = (el: HTMLInputElement, d = 0) => Number.isFinite(el.valueAsNumber) ?
 function pushUniforms(vmin: number, vmax: number) {
   const { gamma, kappa_m, kappa_p } = currentMaterial();
   gl.useProgram(finalProg);
-  console.log("GPU gets:", { pan: [panX, panY], zoom: zoom, aspect: canvas.width / canvas.height });
+  //console.log("GPU gets:", { pan: [panX, panY], zoom: zoom, aspect: canvas.width / canvas.height });
   gl.uniform1f(UF.r0, R0);
   gl.uniform1f(UF.lambda, num(inputs.lambda, 1));
   gl.uniform1f(UF.beta,   num(inputs.beta,   0) * Math.PI / 180);
@@ -109,14 +109,15 @@ function frame() {
 
   // --- NEW: Check if dots are inside the inclusion and move to center ---
   // This check only runs when the "Hole" checkbox is off.
+  const epsilon = 1e-9; // A small tolerance
   if (!holeChk.checked) {
-    // Check if the max point is inside the inclusion's radius (r0)
-    if ((xMax * xMax + yMax * yMax) < (R0 * R0)) {
+    // Check if the max point is *strictly inside* the inclusion
+    if (Math.hypot(xMax, yMax) < R0 - epsilon) {
       xMax = 0;
       yMax = 0;
     }
-    // Check if the min point is inside the inclusion's radius (r0)
-    if ((xMin * xMin + yMin * yMin) < (R0 * R0)) {
+    // Check if the min point is *strictly inside* the inclusion
+    if (Math.hypot(xMin, yMin) < R0 - epsilon) {
       xMin = 0;
       yMin = 0;
     }
@@ -155,7 +156,7 @@ canvas.addEventListener('mousemove', e => {
   const aspect = canvas.clientWidth / canvas.clientHeight;
   const worldX = (ndcX * aspect + panX) / zoom;
   const worldY = (ndcY + panY) / zoom;
-  console.log("JS uses:", { pan: [panX, panY], zoom: zoom, aspect: aspect, world: [worldX, worldY] });
+  //console.log("JS uses:", { pan: [panX, panY], zoom: zoom, aspect: aspect, world: [worldX, worldY] });
 
   const [sxx, syy, txy] = analyticStressAt(worldX, worldY);
   cur_xx.textContent = sxx.toFixed(2);

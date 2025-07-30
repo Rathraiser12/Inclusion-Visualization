@@ -1,6 +1,6 @@
 // src/core/gl.ts
 export function getContext(canvas: HTMLCanvasElement) {
-  const gl = canvas.getContext('webgl2') as WebGL2RenderingContext | null;
+  const gl = canvas.getContext('webgl2', { preserveDrawingBuffer: true }) as WebGL2RenderingContext | null;
   if (!gl)       throw new Error('WebGL2 not supported');
   if (!gl.getExtension('EXT_color_buffer_float'))
     throw new Error('EXT_color_buffer_float extension required');
