@@ -1,0 +1,1 @@
+export const R0 = 0.25;

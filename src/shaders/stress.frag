@@ -64,7 +64,7 @@ vec3 getStress(vec2 xy) {
     float S = u_S, lam = u_lambda;
     float c2b = cos(2.0 * u_beta), s2b = sin(2.0 * u_beta);
     float sxx, syy, txy;
-    if (r <= u_r0) {
+    if (r < u_r0-1e-9) {
         sxx = 0.5*S*((lam+1.0)*A + (1.0-lam)*B*c2b); // <-- FIX: was (lam-1.0)
         syy = 0.5*S*((lam+1.0)*A - (1.0-lam)*B*c2b); // <-- FIX: was (lam-1.0)
         txy = 0.5*S*(1.0-lam)*B*s2b;                 // <-- FIX: was (lam-1.0)

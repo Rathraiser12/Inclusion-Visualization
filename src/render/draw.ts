@@ -11,11 +11,12 @@ import { getContext, link }               from "../core/gl";
 import { vertSrc, stressSrc }             from "../shaders";
 import { currentMaterial }                from "../core/material";
 import { zoom, panX, panY }               from "./panzoom";
-import { computeMinMax, texelToCanvas, analyticStressAt }   from "./gpuMinMax";
+import { computeMinMax, worldToCanvas, analyticStressAt }   from "./gpuMinMax";
 import { drawLegend }                     from "./legend";
+import { R0 } from "../core/constants";
 
 const gl = getContext(canvas);
-const r0 = 0.25;
+
 
 // --- Main visualization program ---
 const fragSrcLines = stressSrc.split('\n');
@@ -74,7 +75,8 @@ const num = (el: HTMLInputElement, d = 0) => Number.isFinite(el.valueAsNumber) ?
 function pushUniforms(vmin: number, vmax: number) {
   const { gamma, kappa_m, kappa_p } = currentMaterial();
   gl.useProgram(finalProg);
-  gl.uniform1f(UF.r0, r0);
+  console.log("GPU gets:", { pan: [panX, panY], zoom: zoom, aspect: canvas.width / canvas.height });
+  gl.uniform1f(UF.r0, R0);
   gl.uniform1f(UF.lambda, num(inputs.lambda, 1));
   gl.uniform1f(UF.beta,   num(inputs.beta,   0) * Math.PI / 180);
   gl.uniform1f(UF.gamma,  gamma);
@@ -102,7 +104,23 @@ function updateGlobalTable() {
 
 function frame() {
   const comp = +[...inputs.comp].find(r => r.checked)!.value as 0 | 1 | 2;
-  const { vmin, vmax, ixMin, iyMin, ixMax, iyMax } = computeMinMax(comp);
+  // --- Get the computed locations ---
+  let { vmin, vmax, xMin, yMin, xMax, yMax } = computeMinMax(comp);
+
+  // --- NEW: Check if dots are inside the inclusion and move to center ---
+  // This check only runs when the "Hole" checkbox is off.
+  if (!holeChk.checked) {
+    // Check if the max point is inside the inclusion's radius (r0)
+    if ((xMax * xMax + yMax * yMax) < (R0 * R0)) {
+      xMax = 0;
+      yMax = 0;
+    }
+    // Check if the min point is inside the inclusion's radius (r0)
+    if ((xMin * xMin + yMin * yMin) < (R0 * R0)) {
+      xMin = 0;
+      yMin = 0;
+    }
+  }
 
   // --- Draw the main stress field visualization ---
   gl.disable(gl.BLEND);
@@ -113,9 +131,9 @@ function frame() {
   gl.drawArrays(gl.TRIANGLES, 0, 6);
   gl.bindVertexArray(null);
 
-  // --- Update HTML Dot Positions ---
-  const ptMax = texelToCanvas(ixMax, iyMax);
-  const ptMin = texelToCanvas(ixMin, iyMin);
+  // --- Update HTML Dot Positions using final coordinates ---
+  const ptMax = worldToCanvas(xMax, yMax);
+  const ptMin = worldToCanvas(xMin, yMin);
   maxDot.style.left = `${ptMax.cx - 6}px`;
   maxDot.style.top = `${ptMax.cy - 6}px`;
   minDot.style.left = `${ptMin.cx - 6}px`;
@@ -134,9 +152,11 @@ canvas.addEventListener('mousemove', e => {
   const cssY = e.clientY - rect.top;
   const ndcX = (cssX / canvas.clientWidth) * 2 - 1;
   const ndcY = 1 - (cssY / canvas.clientHeight) * 2;
-  const aspect = canvas.clientWidth / canvas.height;
+  const aspect = canvas.clientWidth / canvas.clientHeight;
   const worldX = (ndcX * aspect + panX) / zoom;
   const worldY = (ndcY + panY) / zoom;
+  console.log("JS uses:", { pan: [panX, panY], zoom: zoom, aspect: aspect, world: [worldX, worldY] });
+
   const [sxx, syy, txy] = analyticStressAt(worldX, worldY);
   cur_xx.textContent = sxx.toFixed(2);
   cur_yy.textContent = syy.toFixed(2);
