@@ -1,1 +1,1 @@
-export const R0 = 0.25;
+export const R0 = 1;

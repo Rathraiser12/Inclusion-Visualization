@@ -3,7 +3,6 @@ import { legendCanvas, legendCtx,
          legendMinTxt, legendMaxTxt, inputs } from '../ui/dom';
 type RGB = [number, number, number]; 
 
-//const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 const hsv2rgb = (h: number, s = 1, v = 1): RGB => {
   const c = v * s, h6 = h / 60, x = c * (1 - Math.abs(h6 % 2 - 1)), m = v - c;
   let r = 0, g = 0, b = 0;
@@ -18,12 +17,10 @@ const hsv2rgb = (h: number, s = 1, v = 1): RGB => {
 
 /* ───────── colour‑map helpers ───────── */
 
-/** Rainbow (HSV 0→270°) */
 function cmapRainbow(t: number): RGB {
-  return hsv2rgb(270 * (1 - t));          // violet → red
+  return hsv2rgb(270 * (1 - t));
 }
 
-/** Classic “JET” from MATLAB / OpenCV */
 function cmapJet(t: number): RGB {
   const f = (x: number) => Math.max(0, Math.min(1, x));
   return [
@@ -33,7 +30,6 @@ function cmapJet(t: number): RGB {
   ];
 }
 
-/** HOT: black → red → yellow → white */
 function cmapHot(t: number): RGB {
   return [
     Math.min(1, 3 * t),
@@ -42,7 +38,6 @@ function cmapHot(t: number): RGB {
   ].map(v => Math.max(0, v)) as RGB;
 }
 
-/** Cool‑Warm diverging palette (blue ↔ red) */
 function cmapCoolWarm(t:number):RGB{
   const cold:[number,number,number]=[0.23,0.30,0.75];
   const white:[number,number,number]=[0.86,0.87,0.91];
@@ -52,23 +47,29 @@ function cmapCoolWarm(t:number):RGB{
     : white.map((c,i)=>c+(warm[i]-c)*(t-0.5)*2) as RGB;
 }
 
+function cmapGrayscale(t: number): RGB {
+  return [t, t, t];
+}
+
 export const mapColour = (t: number): RGB => {
   switch (+inputs.cmap.value) {
     case 1: return cmapJet(t);
     case 2: return cmapHot(t);
     case 3: return cmapCoolWarm(t);
-    case 4: return cmapCoolWarm(1 - t);
+    case 4: return cmapGrayscale(t);
     default: return cmapRainbow(t);
   }
 };
 
 let lastLegendMin: number | undefined = undefined;
 let lastLegendMax: number | undefined = undefined;
+let lastCmap: string | undefined = undefined; // --- ADD THIS LINE ---
 
 export function drawLegend(min: number, max: number) {
-  // --- Add this check at the beginning of the function ---
-  // If the min/max values haven't changed, do nothing.
-  if (min === lastLegendMin && max === lastLegendMax) {
+  const currentCmap = inputs.cmap.value;
+
+  // --- UPDATE THIS LINE to also check the color map value ---
+  if (min === lastLegendMin && max === lastLegendMax && currentCmap === lastCmap) {
     return;
   }
 
@@ -93,7 +94,7 @@ export function drawLegend(min: number, max: number) {
   legendMinTxt.textContent = min.toFixed(2);
   legendMaxTxt.textContent = max.toFixed(2);
   
-  // --- Update the cache with the new values ---
   lastLegendMin = min;
   lastLegendMax = max;
+  lastCmap = currentCmap; // --- ADD THIS LINE ---
 }

@@ -2,7 +2,7 @@
 <html lang="en" class="h-full bg-slate-100">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale-1.0">
   <title>Infinite Plate With A Circular Inclusion</title>
 
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -19,16 +19,15 @@
     .form-input { @apply w-full bg-slate-50 border border-slate-200 rounded-md px-2 py-1 text-sm text-right tabular-nums focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500; }
     .reset-btn { @apply text-xs font-medium text-slate-500 hover:text-sky-600; }
     .primary-btn { @apply w-full rounded-lg bg-sky-600 text-white py-2.5 text-sm font-semibold shadow-sm hover:bg-sky-700 active:bg-sky-800; }
-    .info-icon { @apply text-xs text-slate-400 cursor-help hover:text-sky-600; }
+    .info-icon { @apply text-slate-400 cursor-help hover:text-sky-600; }
     
-    /* Hide the arrows on number inputs */
     input[type=number]::-webkit-inner-spin-button,
     input[type=number]::-webkit-outer-spin-button {
       -webkit-appearance: none;
       margin: 0;
     }
     input[type=number] {
-      -moz-appearance: textfield; /* For Firefox */
+      -moz-appearance: textfield;
     }
   </style>
 </head>
@@ -43,97 +42,174 @@
 
   <div class="flex-1 flex overflow-hidden">
     <main class="flex-1 p-6 flex items-center justify-center">
-        <!-- FIX: Added relative and overflow-hidden to constrain the HTML dots -->
         <div class="w-full h-full bg-white rounded-lg shadow-inner ring-1 ring-slate-200 relative overflow-hidden">
           <canvas id="glCanvas" class="w-full h-full block rounded-lg"></canvas>
         </div>
     </main>
 
-    <aside class="w-full max-w-3xl h-full flex-shrink-0 bg-slate-50 border-l border-slate-200 overflow-y-auto">
+    <aside class="w-full max-w-md h-full flex-shrink-0 bg-slate-50 border-l border-slate-200 overflow-y-auto">
       <div class="p-4">
-        
-        <div class="grid grid-cols-2 gap-3">
-          <div class="control-card">
-            <div class="card-header"><h2 class="card-title">Geometry & load</h2><button id="resetGeom" class="reset-btn">Reset</button></div>
-            <div class="card-body grid grid-cols-2 gap-x-4 place-content-center">
-              <div class="grid grid-cols-[auto_auto_1fr] items-center gap-x-2"><label for="lambda">&lambda;</label><span id="lambda-info" class="info-icon">ⓘ</span><input id="lambda" class="form-input" type="number" step="0.01" value="1"></div>
-              <div class="grid grid-cols-[auto_auto_1fr] items-center gap-x-2"><label for="beta">&beta;°</label><span id="beta-info" class="info-icon">ⓘ</span><input id="beta" class="form-input" type="number" step="1" value="0"></div>
-            </div>
-          </div>
-          
-          <div class="control-card">
-            <div class="card-header"><h2 class="card-title">View</h2><button id="viewReset" class="reset-btn">Reset</button></div>
-            <div class="card-body grid grid-cols-3 gap-x-3 place-content-center">
-              <div class="grid grid-cols-[auto_1fr] items-center gap-x-2"><label for="viewX">x</label><input id="viewX" class="form-input" step="0.05" value="0"></div>
-              <div class="grid grid-cols-[auto_1fr] items-center gap-x-2"><label for="viewY">y</label><input id="viewY" class="form-input" step="0.05" value="0"></div>
-              <div class="grid grid-cols-[auto_1fr] items-center gap-x-2"><label for="viewZoom">🔍</label><input id="viewZoom" class="form-input" step="0.1" value="1"></div>
-            </div>
-          </div>
-
-          <div class="control-card">
-            <div class="card-header"><h2 class="card-title">Material</h2><button id="resetMat" class="reset-btn">Reset</button></div>
-            <div class="card-body grid grid-cols-3 gap-x-3 place-content-center">
-                <div class="grid grid-cols-[auto_auto_1fr] items-center gap-x-2"><label for="rho">&Gamma;</label><span id="gamma-info" class="info-icon">ⓘ</span><input id="rho" class="form-input" value="0.10"></div>
-                <div class="grid grid-cols-[auto_auto_1fr] items-center gap-x-2"><label for="nuM">&nu;<sub>M</sub></label><span id="num-info" class="info-icon">ⓘ</span><input id="nuM" class="form-input" type="number" value="0.17"></div>
-                <div class="grid grid-cols-[auto_auto_1fr] items-center gap-x-2"><label for="nuP">&nu;<sub>P</sub></label><span id="nup-info" class="info-icon">ⓘ</span><input id="nuP" class="form-input" type="number" value="0.33"></div>
-            </div>
-          </div>
-          
-          <div class="control-card">
-            <div class="card-header"><h2 class="card-title">Mode</h2></div>
-            <div class="card-body grid grid-cols-3 items-center justify-items-center gap-x-2 place-content-center">
-              <label class="flex items-center gap-1.5 cursor-pointer text-xs"><input name="plane" type="radio" value="strain" checked class="h-4 w-4 accent-sky-600"> plane strain</label>
-              <label class="flex items-center gap-1.5 cursor-pointer text-xs"><input name="plane" type="radio" value="stress" class="h-4 w-4 accent-sky-600"> plane stress</label>
-              <label class="flex items-center gap-1.5 cursor-pointer text-xs"><input id="holeChk" type="checkbox" class="h-4 w-4 rounded accent-sky-600"> Hole</label>
-            </div>
-          </div>
-          
-          <div class="control-card col-span-2">
-            <div class="card-header"><h2 class="card-title">Stress</h2></div>
-            <table class="w-full text-center text-xs">
-                <thead class="bg-slate-50/75 text-slate-600">
-                  <tr class="border-b border-slate-200/75">
-                    <th class="py-1.5 px-3 text-left font-semibold">Component</th>
-                    <th class="py-1.5 px-3 font-semibold">max σ</th>
-                    <th class="py-1.5 px-3 font-semibold">min σ</th>
-                    <th class="py-1.5 px-3 font-semibold">σ(x,y)</th>
-                  </tr>
-                </thead>
-                <tbody class="font-mono">
-                  <tr class="border-b border-slate-200/75">
-                    <td class="py-1.5 px-3 text-left"><label class="font-sans font-medium flex items-center gap-2 cursor-pointer"><input name="comp" type="radio" value="0" checked class="h-4 w-4 accent-sky-600"> σₓₓ</label></td>
-                    <td id="max_xx" class="py-1.5 px-3">‑</td><td id="min_xx" class="py-1.5 px-3">‑</td><td id="cur_xx" class="py-1.5 px-3">‑</td>
-                  </tr>
-                  <tr class="border-b border-slate-200/75">
-                    <td class="py-1.5 px-3 text-left"><label class="font-sans font-medium flex items-center gap-2 cursor-pointer"><input name="comp" type="radio" value="1" class="h-4 w-4 accent-sky-600"> σᵧᵧ</label></td>
-                    <td id="max_yy" class="py-1.5 px-3">‑</td><td id="min_yy" class="py-1.5 px-3">‑</td><td id="cur_yy" class="py-1.5 px-3">‑</td>
-                  </tr>
-                  <tr>
-                    <td class="py-1.5 px-3 text-left"><label class="font-sans font-medium flex items-center gap-2 cursor-pointer"><input name="comp" type="radio" value="2" class="h-4 w-4 accent-sky-600"> τₓᵧ</label></td>
-                    <td id="max_xy" class="py-1.5 px-3">‑</td><td id="min_xy" class="py-1.5 px-3">‑</td><td id="cur_xy" class="py-1.5 px-3">‑</td>
-                  </tr>
-                </tbody>
-            </table>
-          </div>
-          
-          <div class="control-card col-span-2">
-            <div class="card-header"><h2 class="card-title">Colour map</h2></div>
-            <div class="card-body space-y-3">
-                <select id="cmap" class="w-full border border-slate-300 rounded-md px-2 py-1.5 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-sky-500">
-                  <option value="0" selected>Rainbow</option><option value="1" >Jet</option>
-                  <option value="2">Hot</option><option value="3" >Cool-Warm</option>
-                  <option value="4">Inv Cool-Warm</option>
-                </select>
-                <canvas id="legendCanvas" class="h-4 w-full rounded-full"></canvas>
-                <div class="flex justify-between text-xs tabular-nums font-medium text-slate-600">
-                  <span id="legendMin">‑</span><span id="legendMax">‑</span>
+        <div class="space-y-3">
+            
+            <div class="grid grid-cols-2 gap-3">
+                <div class="control-card">
+                    <div class="card-header">
+                        <h2 class="card-title">Geometry & Load</h2>
+                        <div class="flex items-center gap-x-2">
+                           <span id="geom-load-card-info" class="info-icon">
+                                <svg class="h-4 w-4 text-slate-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" />
+                                </svg>
+                           </span>
+                           <button id="resetGeom" class="reset-btn">Reset</button>
+                        </div>
+                    </div>
+                    <div class="card-body grid grid-cols-2 gap-x-4">
+                        <div class="flex items-center gap-x-2">
+                            <label for="lambda" class="w-5 text-center">λ</label>
+                            <input id="lambda" class="form-input" type="number" step="0.01" value="1">
+                        </div>
+                        <div class="flex items-center gap-x-2">
+                            <label for="beta" class="w-5 text-center">β°</label>
+                            <input id="beta" class="form-input" type="number" step="1" value="0">
+                        </div>
+                    </div>
+                </div>
+                <div class="control-card">
+                    <div class="card-header"><h2 class="card-title">Mode</h2></div>
+                    <div class="card-body flex items-center justify-around gap-x-2">
+                        <label class="flex items-center gap-1.5 cursor-pointer text-xs"><input name="plane" type="radio" value="strain" checked class="h-4 w-4 accent-sky-600"> plane strain</label>
+                        <label class="flex items-center gap-1.5 cursor-pointer text-xs"><input name="plane" type="radio" value="stress" class="h-4 w-4 accent-sky-600"> plane stress</label>
+                        <label class="flex items-center gap-1.5 cursor-pointer text-xs"><input id="holeChk" type="checkbox" class="h-4 w-4 rounded accent-sky-600"> Hole</label>
+                    </div>
                 </div>
             </div>
-          </div>
-          
-          <div class="col-span-2 pt-1">
-            <button id="btnSave" class="primary-btn">Save PNG</button>
-          </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div class="control-card">
+                    <div class="card-header">
+                        <h2 class="card-title">Material</h2>
+                        <span id="material-card-info" class="info-icon">
+                            <svg class="h-4 w-4 text-slate-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" />
+                            </svg>
+                        </span>
+                    </div>
+                    <div class="card-body grid grid-cols-2 gap-3 items-center">
+                        <div class="flex items-center gap-x-2">
+                           <label for="rho" class="w-8 text-center font-medium">&Gamma;</label>
+                           <input id="rho" class="form-input" value="0.10">
+                        </div>
+                        <div class="flex items-center gap-x-2">
+                           <label for="nuM" class="w-8 text-center font-medium">&nu;<sub>M</sub></label>
+                           <input id="nuM" class="form-input" type="number" value="0.17">
+                        </div>
+                        <div class="flex items-center gap-x-2">
+                           <label for="nuP" class="w-8 text-center font-medium">&nu;<sub>P</sub></label>
+                           <input id="nuP" class="form-input" type="number" value="0.33">
+                        </div>
+                        <button id="resetMat" class="text-xs font-medium text-slate-500 hover:text-sky-600 border border-slate-200 rounded-md py-1 bg-slate-50/75 hover:bg-slate-100">Reset</button>
+                    </div>
+                </div>
+                <div class="control-card">
+                    <div class="card-header">
+                        <h2 class="card-title">View</h2>
+                        <span id="view-card-info" class="info-icon">
+                           <svg class="h-4 w-4 text-slate-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" />
+                            </svg>
+                        </span>
+                    </div>
+                    <div class="card-body grid grid-cols-2 gap-3 items-center">
+                         <div class="flex items-center gap-x-2">
+                           <label for="viewX" class="w-8 text-center font-medium">x</label>
+                           <input id="viewX" class="form-input" step="0.05" value="0">
+                        </div>
+                        <div class="flex items-center gap-x-2">
+                           <label for="viewY" class="w-8 text-center font-medium">y</label>
+                           <input id="viewY" class="form-input" step="0.05" value="0">
+                        </div>
+                        <div class="flex items-center gap-x-2">
+                           <label for="viewZoom" class="w-8 text-center">
+                                <svg class="h-4 w-4 mx-auto text-slate-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+                                </svg>
+                           </label>
+                           <input id="viewZoom" class="form-input" step="0.1" value="1">
+                        </div>
+                        <button id="viewReset" class="text-xs font-medium text-slate-500 hover:text-sky-600 border border-slate-200 rounded-md py-1 bg-slate-50/75 hover:bg-slate-100">Reset</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="control-card">
+                <div class="card-header">
+                    <h2 class="card-title">Stress</h2>
+                    <span id="stress-card-info" class="info-icon">
+                        <svg class="h-4 w-4 text-slate-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" />
+                        </svg>
+                    </span>
+                </div>
+                <table class="w-full text-center text-sm">
+                    <thead class="bg-slate-50/75 text-slate-600 font-medium">
+                        <tr class="border-b border-slate-200/75">
+                            <th class="py-1.5 px-3 text-left">Component</th>
+                            <th class="py-1.5 px-3">max<sub>&part;S</sub> &sigma;</th>
+                            <th class="py-1.5 px-3">min<sub>&part;S</sub> &sigma;</th>
+                            <th class="py-1.5 px-3">&sigma;(x,y)</th>
+                        </tr>
+                    </thead>
+                    <tbody class="font-mono text-xs">
+                        <tr class="border-b border-slate-200/75">
+                            <td class="py-1.5 px-3 text-left">
+                                <label class="font-sans font-medium flex items-center gap-2 cursor-pointer text-sm">
+                                    <input name="comp" type="radio" value="0" checked class="h-4 w-4 accent-sky-600">
+                                    <span>&sigma;<sub>xx</sub></span>
+                                </label>
+                            </td>
+                            <td id="max_xx">‑</td><td id="min_xx">‑</td><td id="cur_xx">‑</td>
+                        </tr>
+                        <tr class="border-b border-slate-200/75">
+                            <td class="py-1.5 px-3 text-left">
+                                <label class="font-sans font-medium flex items-center gap-2 cursor-pointer text-sm">
+                                    <input name="comp" type="radio" value="1" class="h-4 w-4 accent-sky-600">
+                                    <span>&sigma;<sub>yy</sub></span>
+                                </label>
+                            </td>
+                            <td id="max_yy">‑</td><td id="min_yy">‑</td><td id="cur_yy">‑</td>
+                        </tr>
+                        <tr>
+                            <td class="py-1.5 px-3 text-left">
+                                <label class="font-sans font-medium flex items-center gap-2 cursor-pointer text-sm">
+                                    <input name="comp" type="radio" value="2" class="h-4 w-4 accent-sky-600">
+                                    <span>&tau;<sub>xy</sub></span>
+                                </label>
+                            </td>
+                            <td id="max_xy">‑</td><td id="min_xy">‑</td><td id="cur_xy">‑</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="control-card">
+                <div class="card-header"><h2 class="card-title">Colour Map</h2></div>
+                <div class="card-body space-y-3">
+                    <select id="cmap" class="w-full border border-slate-300 rounded-md px-2 py-1.5 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-sky-500 text-sm">
+                        <option value="0" selected>Rainbow</option>
+                        <option value="1">Jet</option>
+                        <option value="2">Hot</option>
+                        <option value="3">Cool-Warm</option>
+                        <option value="4">Grayscale</option>
+                    </select>
+                    <canvas id="legendCanvas" class="h-4 w-full rounded-full"></canvas>
+                    <div class="flex justify-between text-xs tabular-nums font-medium text-slate-600">
+                        <span id="legendMin">‑</span><span id="legendMax">‑</span>
+                    </div>
+                    <button id="btnSave" class="primary-btn">Save PNG</button>
+                </div>
+            </div>
+            
         </div>
       </div>
     </aside>

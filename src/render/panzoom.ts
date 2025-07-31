@@ -2,7 +2,7 @@
 import { canvas, viewX, viewY, viewZoom, viewReset } from '../ui/dom';
 import { clamp } from '../core/math';
 
-export let zoom = 1;
+export let zoom = 0.25;
 export let panX = 0;
 export let panY = 0;
 
@@ -54,7 +54,7 @@ window.addEventListener('mousemove', e => {
   if (!dragging) return;
   const asp = canvas.width / canvas.height;
 
-  const panLimit = zoom; 
+  const panLimit = Math.max(zoom, 1.0); 
  panX = clamp(
     panX - (e.clientX - lastX) / canvas.height * 2 * asp,
    -panLimit, panLimit
@@ -93,4 +93,10 @@ viewZoom.addEventListener('input', () => {
     zoom = clamp(v, 0.10, 1e6);
     viewZoom.value = zoom.toFixed(2);
   }
+});
+canvas.addEventListener('dblclick', () => {
+  zoom = 1;
+  panX = 0;
+  panY = 0;
+  updateInputs();
 });

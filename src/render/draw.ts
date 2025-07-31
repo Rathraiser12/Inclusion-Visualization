@@ -13,7 +13,7 @@ import { getContext, link } from "../core/gl";
 import { vertSrc, stressSrc } from "../shaders";
 import { currentMaterial } from "../core/material";
 import { zoom, panX, panY } from "./panzoom";
-import { drawLegend } from "./legend";
+import { drawLegend, mapColour } from "./legend";
 import { R0 } from "../core/constants";
 import { GpuReducer, MinMaxResult } from './gpuReducer';
 import { worldToCanvas, analyticStressAt } from "./utils";
@@ -107,22 +107,20 @@ function getOrComputeMinMax(comp: 0 | 1 | 2): MinMaxResult {
         return minMaxCache.get(key)!;
     }
 
-    // If not in cache, run the GPU reducer
+    // Step 1: Compute with the GPU reducer
     const { gamma, kappa_m, kappa_p } = currentMaterial();
     const uniforms = {
-        r0: R0,
-        lambda: num(inputs.lambda, 1),
+        r0: R0, lambda: num(inputs.lambda, 1),
         beta: num(inputs.beta, 0) * Math.PI / 180,
-        gamma,
-        kappa_m,
-        kappa_p,
-        comp,
-        hole: holeChk.checked ? 1 : 0,
+        gamma, kappa_m, kappa_p,
+        comp, hole: holeChk.checked ? 1 : 0,
     };
-    const result = gpuReducer.findMinMax(uniforms);
-    minMaxCache.set(key, result);
+    let result = gpuReducer.findMinMax(uniforms);
 
-    // Keep the cache from growing too large
+    // Step 2: Refine the result with the boundary scan BEFORE caching
+    result = refineMinMaxOnBoundary(result, comp);
+
+    minMaxCache.set(key, result);
     if (minMaxCache.size > 50) {
         minMaxCache.delete(minMaxCache.keys().next().value!);
     }
@@ -161,32 +159,59 @@ function updateGlobalTable() {
     min_xy.textContent = txy.vmin.toFixed(2);
     max_xy.textContent = txy.vmax.toFixed(2);
 }
+/**
+ * Takes the result from the GPU search and refines the min/max VALUES
+ * by doing a precise scan along the inclusion boundary on the CPU.
+ */
+function refineMinMaxOnBoundary(initialResult: MinMaxResult, comp: 0 | 1 | 2): MinMaxResult {
+    let { vmin, vmax } = initialResult;
 
+    // A high-resolution scan of 900 points around the inclusion circumference
+    const N = 900;
+    for (let i = 0; i < N; ++i) {
+        const theta = (i / N) * 2 * Math.PI;
+        const x = R0 * Math.cos(theta);
+        const y = R0 * Math.sin(theta);
+        
+        // Use the precise analytic function for the check
+        const val = analyticStressAt(x, y)[comp];
+
+        if (val < vmin) {
+            vmin = val;
+        }
+        if (val > vmax) {
+            vmax = val;
+        }
+    }
+    
+    // Return the original result but with potentially refined min/max values
+    return { ...initialResult, vmin, vmax };
+}
+// frame function
 function frame() {
     const comp = +[...inputs.comp].find(r => r.checked)!.value as 0 | 1 | 2;
-
+    
     // Clear the cache if core parameters have changed
     const currentParamKey = getCacheKey(comp).split('|').slice(1).join('|');
     if (currentParamKey !== lastCacheKey) {
         minMaxCache.clear();
         lastCacheKey = currentParamKey;
     }
-
-    // Get the min/max for the currently selected component from the cache.
-    // This will compute it via the GPU if it's not already cached.
-    let { vmin, vmax, xMin, yMin, xMax, yMax } = getOrComputeMinMax(comp);
+    
+    // Step 1: Get the result from the cache (or compute it if not present)
+    let result = getOrComputeMinMax(comp);
+    
+    // Step 2: Refine the min/max values with the precise CPU boundary scan
+    // Note: The getOrComputeMinMax function already does this before caching.
+    // If you moved the refinement step outside the cache, you would call it here.
+    // Since we fixed it to be inside getOrComputeMinMax, we just use the result.
+    let { vmin, vmax, xMin, yMin, xMax, yMax } = result;
 
     // If the min/max point is found inside the inclusion, move the dot to the center.
     if (!holeChk.checked) {
         const epsilon = 1e-9;
-        if (Math.hypot(xMax, yMax) < R0 - epsilon) {
-            xMax = 0;
-            yMax = 0;
-        }
-        if (Math.hypot(xMin, yMin) < R0 - epsilon) {
-            xMin = 0;
-            yMin = 0;
-        }
+        if (Math.hypot(xMax, yMax) < R0 - epsilon) { xMax = 0; yMax = 0; }
+        if (Math.hypot(xMin, yMin) < R0 - epsilon) { xMin = 0; yMin = 0; }
     }
 
     // --- Draw the main stress field visualization ---
@@ -198,7 +223,14 @@ function frame() {
     gl.drawArrays(gl.TRIANGLES, 0, 6);
     gl.bindVertexArray(null);
 
-    // --- Update HTML Dot Positions using final coordinates ---
+    // --- Update HTML Dot Positions & Colors ---
+    const minColor = mapColour(0); // Get color for the minimum value (t=0)
+    const maxColor = mapColour(1); // Get color for the maximum value (t=1)
+    
+    // Convert [0,1] RGB array to a CSS color string
+    minDot.style.background = `rgb(${minColor[0] * 255}, ${minColor[1] * 255}, ${minColor[2] * 255})`;
+    maxDot.style.background = `rgb(${maxColor[0] * 255}, ${maxColor[1] * 255}, ${maxColor[2] * 255})`;
+
     const ptMax = worldToCanvas(xMax, yMax);
     const ptMin = worldToCanvas(xMin, yMin);
     maxDot.style.left = `${ptMax.cx - 6}px`;
@@ -208,7 +240,7 @@ function frame() {
 
     // --- Update UI elements ---
     drawLegend(vmin, vmax);
-    updateGlobalTable(); // This now just updates text from the (now populated) cache
+    updateGlobalTable();
 
     requestAnimationFrame(frame);
 }

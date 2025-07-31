@@ -29,11 +29,12 @@ export function analyticStressAt(x: number, y: number) {
     const A = holeChk.checked ? 0 : (1 + kappa_m) / (2 + gamma * (kappa_p - 1));
     const B = holeChk.checked ? 0 : (1 + kappa_m) / (gamma + kappa_m);
     const c2b = Math.cos(2 * beta), s2b = Math.sin(2 * beta);
-    const r = Math.hypot(x, y), theta = Math.atan2(y, x);
+    let r = Math.hypot(x, y), theta = Math.atan2(y, x);
     const epsilon = 1e-9;
 
     //if (r < 0.26 && r > 0.24) console.log(`JS check: r=${r}, r0=${R0}`);
     const r0 = R0;
+    if (Math.abs(r - r0) < epsilon) { r = r0; }
     let sxx, syy, txy;
     if (r < r0 - epsilon) {
         sxx = 0.5 * S * ((lambda + 1) * A + (1 - lambda) * B * c2b);
