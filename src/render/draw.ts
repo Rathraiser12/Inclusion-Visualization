@@ -7,14 +7,14 @@
 import {
     canvas, inputs, holeChk,
     cur_xx, cur_yy, cur_xy,
-    min_xx, max_xx, min_yy, max_yy, min_xy, max_xy
+    min_xx, max_xx, min_yy, max_yy, min_xy, max_xy,minDot, maxDot
 } from "../ui/dom";
 import { getContext, link } from "../core/gl";
 import { vertSrc, stressSrc } from "../shaders";
 import { currentMaterial } from "../core/material";
 import { zoom, panX, panY } from "./panzoom";
 import { drawLegend, mapColour } from "./legend";
-import { R0 } from "../core/constants";
+import { R0,INITIAL_SCALE } from "../core/constants";
 import { GpuReducer, MinMaxResult } from './gpuReducer';
 import { worldToCanvas, analyticStressAt } from "./utils";
 
@@ -63,18 +63,17 @@ const UF = {
 };
 
 // --- HTML Divs for Min/Max Dots ---
-const maxDot = document.createElement("div");
-const minDot = document.createElement("div");
+
 for (const d of [maxDot, minDot]) {
-    Object.assign(d.style, {
-        position: "absolute",
-        width: "9px",
-        height: "9px",
-        borderRadius: "50%",
-        border: "2px solid #fff",
-        boxShadow: "0 0 0 1px rgba(0,0,0,0.5)",
-        pointerEvents: "none",
-    });
+  Object.assign(d.style, {
+    position: "absolute",
+    width: "9px",
+    height: "9px",
+    borderRadius: "50%",
+    border: "2px solid #fff",
+    boxShadow: "0 0 0 1px rgba(0,0,0,0.5)",
+    pointerEvents: "none",
+  });
 }
 maxDot.style.background = "#d00"; // red = max
 minDot.style.background = "#00d"; // blue = min
@@ -141,7 +140,7 @@ function pushFinalRenderUniforms(vmin: number, vmax: number) {
     gl.uniform1i(UF.cmap, +inputs.cmap.value);
     gl.uniform1f(UF.minV, vmin);
     gl.uniform1f(UF.maxV, vmax);
-    gl.uniform1f(UF.zoom, zoom);
+    gl.uniform1f(UF.zoom, zoom * INITIAL_SCALE);
     gl.uniform2f(UF.pan, panX, panY);
     gl.uniform1f(UF.asp, canvas.width / canvas.height);
     gl.uniform1i(UF.hole, holeChk.checked ? 1 : 0);
@@ -198,16 +197,8 @@ function frame() {
         lastCacheKey = currentParamKey;
     }
     
-    // Step 1: Get the result from the cache (or compute it if not present)
-    let result = getOrComputeMinMax(comp);
-    
-    // Step 2: Refine the min/max values with the precise CPU boundary scan
-    // Note: The getOrComputeMinMax function already does this before caching.
-    // If you moved the refinement step outside the cache, you would call it here.
-    // Since we fixed it to be inside getOrComputeMinMax, we just use the result.
-    let { vmin, vmax, xMin, yMin, xMax, yMax } = result;
+    let { vmin, vmax, xMin, yMin, xMax, yMax } = getOrComputeMinMax(comp);
 
-    // If the min/max point is found inside the inclusion, move the dot to the center.
     if (!holeChk.checked) {
         const epsilon = 1e-9;
         if (Math.hypot(xMax, yMax) < R0 - epsilon) { xMax = 0; yMax = 0; }
@@ -224,12 +215,21 @@ function frame() {
     gl.bindVertexArray(null);
 
     // --- Update HTML Dot Positions & Colors ---
-    const minColor = mapColour(0); // Get color for the minimum value (t=0)
-    const maxColor = mapColour(1); // Get color for the maximum value (t=1)
+    const minColor = mapColour(0);
+    const maxColor = mapColour(1);
     
-    // Convert [0,1] RGB array to a CSS color string
     minDot.style.background = `rgb(${minColor[0] * 255}, ${minColor[1] * 255}, ${minColor[2] * 255})`;
     maxDot.style.background = `rgb(${maxColor[0] * 255}, ${maxColor[1] * 255}, ${maxColor[2] * 255})`;
+
+    // --- NEW: Dynamically set border color for visibility ---
+    // Calculate luminance (a simple measure of brightness)
+    const minLuminance = minColor[0] + minColor[1] + minColor[2];
+    const maxLuminance = maxColor[0] + maxColor[1] + maxColor[2];
+
+    // If a color is very light (e.g., white, yellow), use a dark border. Otherwise, use white.
+    minDot.style.borderColor = minLuminance > 2.0 ? '#333' : '#fff';
+    maxDot.style.borderColor = maxLuminance > 2.0 ? '#333' : '#fff';
+    // --- End of new code ---
 
     const ptMax = worldToCanvas(xMax, yMax);
     const ptMin = worldToCanvas(xMin, yMin);

@@ -1,7 +1,7 @@
 import {  canvas, inputs, holeChk } from "../ui/dom";
 import { currentMaterial }         from "../core/material";
 import * as view from "./panzoom";
-import { R0 } from '../core/constants';
+import { R0,INITIAL_SCALE } from '../core/constants';
 
 const DEF = { lambda: 1, beta: 0 };
 // The size of the grid to scan on the CPU. 256x256 is a good balance
@@ -12,9 +12,12 @@ const num = (el: HTMLInputElement, d = 0) => Number.isFinite(el.valueAsNumber) ?
 
 export function worldToCanvas(worldX: number, worldY: number) {
   const aspect = canvas.clientWidth / canvas.clientHeight;
+  
+  // Calculate the effective zoom by applying the initial scale
+  const effectiveZoom = view.zoom * INITIAL_SCALE;
 
-  const finalNdcY = worldY * view.zoom - view.panY;
-  const finalNdcX = (worldX * view.zoom - view.panX) / aspect;
+  const finalNdcY = worldY * effectiveZoom - view.panY;
+  const finalNdcX = (worldX * effectiveZoom - view.panX) / aspect;
 
   const cssX = (finalNdcX + 1) * 0.5 * canvas.clientWidth;
   const cssY = (1 - finalNdcY) * 0.5 * canvas.clientHeight;

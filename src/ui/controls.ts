@@ -1,8 +1,9 @@
 // src/ui/controls.ts
-import { clampNu } from '../core/math';
-import { btnSave, canvas, holeChk, inputs, resetGeom, resetMat } from './dom';
+declare function html2canvas(element: HTMLElement, options?: any): Promise<HTMLCanvasElement>;
 
-// Default values needed for reset and hole mode logic
+import { clampNu } from '../core/math';
+import { btnSave,  holeChk, inputs, resetGeom, resetMat, minDot, maxDot } from './dom';
+
 const DEFAULTS = {
   lambda: 1,
   beta: 0,
@@ -13,15 +14,62 @@ const DEFAULTS = {
 };
 
 export function setupUI() {
-  // Save PNG button
+  
+  const saveModal = document.querySelector<HTMLElement>('#save-modal')!;
+  const cancelSaveBtn = document.querySelector<HTMLButtonElement>('#cancel-save-btn')!;
+  const confirmSaveBtn = document.querySelector<HTMLButtonElement>('#confirm-save-btn')!;
+  const resolutionSelect = document.querySelector<HTMLSelectElement>('#resolution-select')!;
+  const dotsCheckbox = document.querySelector<HTMLInputElement>('#dots-checkbox')!;
+  const visualizationContainer = document.querySelector<HTMLElement>('#visualization-container');
+
   btnSave.addEventListener('click', () => {
-    const a = document.createElement('a');
-    a.download = 'stress-field.png';
-    a.href     = canvas.toDataURL('image/png');
-    a.click();
+    saveModal.classList.remove('hidden');
   });
 
-  // --- Reset Buttons ---
+  cancelSaveBtn.addEventListener('click', () => {
+    saveModal.classList.add('hidden');
+  });
+
+  confirmSaveBtn.addEventListener('click', async () => {
+    if (!visualizationContainer) return;
+
+    // --- NEW LOGIC FOR CALCULATING SCALE ---
+    const targetWidth = parseInt(resolutionSelect.value, 10);
+    const currentWidth = visualizationContainer.clientWidth;
+    const scale = targetWidth / currentWidth;
+    // --- END OF NEW LOGIC ---
+
+    const includeDots = dotsCheckbox.checked;
+
+    if (!includeDots) {
+      minDot.style.display = 'none';
+      maxDot.style.display = 'none';
+    }
+
+    try {
+      const capturedCanvas = await html2canvas(visualizationContainer, {
+        scale: scale, // Use the dynamically calculated scale
+        useCORS: true,
+        backgroundColor: null
+      });
+
+      const a = document.createElement('a');
+      a.download = `stress-field-${targetWidth}px.png`;
+      a.href = capturedCanvas.toDataURL('image/png');
+      a.click();
+
+    } catch (error) {
+      console.error("Failed to save canvas:", error);
+    } finally {
+      if (!includeDots) {
+        minDot.style.display = 'block';
+        maxDot.style.display = 'block';
+      }
+      saveModal.classList.add('hidden');
+    }
+  });
+
+  // --- Reset Buttons and other logic... (rest of file is unchanged) ---
   resetGeom.addEventListener('click', () => {
     inputs.lambda.value = DEFAULTS.lambda.toString();
     inputs.beta.value   = DEFAULTS.beta.toString();
@@ -36,21 +84,18 @@ export function setupUI() {
     [...inputs.plane].forEach(r => r.checked = r.value === DEFAULTS.plane);
   });
 
-  // --- Interactive "Hole" Mode Logic ---
   holeChk.addEventListener('input', () => {
     if (holeChk.checked) {
-      inputs.rho.value = '∞'; // Display infinity as a visual cue
+      inputs.rho.value = '∞';
       inputs.nuP.value = '0';
       inputs.nuP.disabled = true;
     } else {
-      // Restore defaults if unchecked
       inputs.rho.value = DEFAULTS.rho.toString();
       inputs.nuP.value = DEFAULTS.nuP.toString();
       inputs.nuP.disabled = false;
     }
   });
 
-  // Editing material properties automatically un-checks the "Hole" mode
   inputs.rho.addEventListener('input', () => {
     holeChk.checked = false;
     inputs.nuP.disabled = false;
@@ -59,12 +104,8 @@ export function setupUI() {
     holeChk.checked = false;
   });
 
-  // --- Input Clamping ---
-  // Add blur listeners to clamp Poisson's ratio inputs
   inputs.nuM.addEventListener('blur', () => {
     const value = parseFloat(inputs.nuM.value);
-    // If the input is a valid number, update it to the clamped value.
-    // Otherwise, reset to the default.
     if (Number.isFinite(value)) {
       inputs.nuM.value = clampNu(value).toString();
     } else {

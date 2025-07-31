@@ -2,7 +2,7 @@
 import { canvas, viewX, viewY, viewZoom, viewReset } from '../ui/dom';
 import { clamp } from '../core/math';
 
-export let zoom = 0.25;
+export let zoom = 1;
 export let panX = 0;
 export let panY = 0;
 

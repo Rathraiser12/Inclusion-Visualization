@@ -2,7 +2,7 @@
 <html lang="en" class="h-full bg-slate-100">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale-1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Infinite Plate With A Circular Inclusion</title>
 
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -40,18 +40,18 @@
     </h1>
   </header>
 
-  <div class="flex-1 flex overflow-hidden">
-    <main class="flex-1 p-6 flex items-center justify-center">
-        <div class="w-full h-full bg-white rounded-lg shadow-inner ring-1 ring-slate-200 relative overflow-hidden">
+  <div class="flex-1 flex flex-col lg:flex-row overflow-hidden">
+    <main class="flex-1 p-4 lg:p-6 flex items-center justify-center">
+        <div id="visualization-container" class="w-full h-full bg-white rounded-lg shadow-inner ring-1 ring-slate-200 relative overflow-hidden">
           <canvas id="glCanvas" class="w-full h-full block rounded-lg"></canvas>
         </div>
     </main>
 
-    <aside class="w-full max-w-md h-full flex-shrink-0 bg-slate-50 border-l border-slate-200 overflow-y-auto">
+    <aside class="w-full lg:max-w-md h-full flex-shrink-0 bg-slate-50 border-t lg:border-t-0 lg:border-l border-slate-200 overflow-y-auto">
       <div class="p-4">
-        <div class="space-y-3">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-3">
             
-            <div class="grid grid-cols-2 gap-3">
+            <div class="sm:col-span-2 lg:col-span-1 grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div class="control-card">
                     <div class="card-header">
                         <h2 class="card-title">Geometry & Load</h2>
@@ -75,6 +75,7 @@
                         </div>
                     </div>
                 </div>
+
                 <div class="control-card">
                     <div class="card-header"><h2 class="card-title">Mode</h2></div>
                     <div class="card-body flex items-center justify-around gap-x-2">
@@ -83,9 +84,7 @@
                         <label class="flex items-center gap-1.5 cursor-pointer text-xs"><input id="holeChk" type="checkbox" class="h-4 w-4 rounded accent-sky-600"> Hole</label>
                     </div>
                 </div>
-            </div>
 
-            <div class="grid grid-cols-2 gap-3">
                 <div class="control-card">
                     <div class="card-header">
                         <h2 class="card-title">Material</h2>
@@ -97,20 +96,21 @@
                     </div>
                     <div class="card-body grid grid-cols-2 gap-3 items-center">
                         <div class="flex items-center gap-x-2">
-                           <label for="rho" class="w-8 text-center font-medium">&Gamma;</label>
+                           <label for="rho" class="w-8 text-center font-medium">Γ</label>
                            <input id="rho" class="form-input" value="0.10">
                         </div>
                         <div class="flex items-center gap-x-2">
-                           <label for="nuM" class="w-8 text-center font-medium">&nu;<sub>M</sub></label>
+                           <label for="nuM" class="w-8 text-center font-medium">ν<sub>M</sub></label>
                            <input id="nuM" class="form-input" type="number" value="0.17">
                         </div>
                         <div class="flex items-center gap-x-2">
-                           <label for="nuP" class="w-8 text-center font-medium">&nu;<sub>P</sub></label>
+                           <label for="nuP" class="w-8 text-center font-medium">ν<sub>P</sub></label>
                            <input id="nuP" class="form-input" type="number" value="0.33">
                         </div>
                         <button id="resetMat" class="text-xs font-medium text-slate-500 hover:text-sky-600 border border-slate-200 rounded-md py-1 bg-slate-50/75 hover:bg-slate-100">Reset</button>
                     </div>
                 </div>
+
                 <div class="control-card">
                     <div class="card-header">
                         <h2 class="card-title">View</h2>
@@ -141,7 +141,7 @@
                     </div>
                 </div>
             </div>
-            
+
             <div class="control-card">
                 <div class="card-header">
                     <h2 class="card-title">Stress</h2>
@@ -215,6 +215,32 @@
     </aside>
   </div>
 
+  <div id="save-modal" class="hidden fixed inset-0 bg-black/30 z-50 flex items-center justify-center p-4">
+    <div class="bg-white w-full max-w-sm rounded-lg shadow-xl p-6 space-y-4">
+        <h3 class="text-lg font-semibold text-slate-800">Save Image Options</h3>
+        
+        <div >
+            <label for="resolution-select" class="block text-sm font-medium text-slate-600 mb-1">Resolution</label>
+            <select id="resolution-select" class="w-full border border-slate-300 rounded-md px-2 py-1.5 bg-slate-50 text-sm">
+                <option value="800">800 x 800 px</option>
+                <option value="1600">1600 x 1600 px</option>
+                <option value="3200">3200 x 3200 px</option>
+            </select>
+        </div>
+
+        <div class="flex items-center">
+            <input id="dots-checkbox" type="checkbox" class="h-4 w-4 rounded accent-sky-600">
+            <label for="dots-checkbox" class="ml-2 block text-sm text-slate-700">Include min/max dots</label>
+        </div>
+
+        <div class="flex justify-end gap-3 pt-2">
+            <button id="cancel-save-btn" class="text-sm font-semibold text-slate-600 rounded-lg px-4 py-2 hover:bg-slate-100">Cancel</button>
+            <button id="confirm-save-btn" class="primary-btn !w-auto px-5">Save</button>
+        </div>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script type="module" src="/src/index.ts"></script>
 </body>
 </html>

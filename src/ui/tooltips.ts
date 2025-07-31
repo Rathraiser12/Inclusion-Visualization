@@ -6,7 +6,7 @@ import 'tippy.js/dist/svg-arrow.css';
 import 'tippy.js/themes/translucent.css';
 
 const geomLoadContent = document.createElement('div');
-geomLoadContent.innerHTML = `<img src="/schematic.png" alt="Schematic of the plate geometry and loading" style="max-width: 300px;"/>`;
+geomLoadContent.innerHTML = `<img src="/rough_schematic.jpg" alt="Schematic of the plate geometry and loading" style="max-width: 300px;"/>`;
 
 const tooltipContent = {
   '#geom-load-card-info': {

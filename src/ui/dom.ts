@@ -98,3 +98,5 @@ export const stressCells = {
   min_yy, max_yy,
   min_xy, max_xy,
 };
+export const minDot = document.createElement("div");
+export const maxDot = document.createElement("div");
