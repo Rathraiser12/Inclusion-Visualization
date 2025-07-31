@@ -79,25 +79,37 @@ vec3 getStress(vec2 xy) {
 }
 
 void main() {
-  // Convert NDC to world coordinates, applying pan/zoom for the final render pass
-  vec2 xy = vec2(v_ndc.x * u_aspect, v_ndc.y);
+  // Convert NDC to world coordinates.
+  // The IS_PLATE_FRAG define distinguishes between the final visual render
+  // (which needs pan/zoom) and the initial data-gathering pass (which does not).
+  vec2 world_xy = vec2(v_ndc.x * u_aspect, v_ndc.y);
+  
   #ifdef IS_PLATE_FRAG
-    xy = (xy + u_pan) / u_zoom;
+    // Apply pan and zoom only for the final render on the canvas
+    world_xy = (world_xy + u_pan) / u_zoom;
   #endif
 
   // Calculate the stress at that point
-  vec3 stress = getStress(xy);
+  vec3 stress = getStress(world_xy);
   float val = u_component == 0 ? stress.x : (u_component == 1 ? stress.y : stress.z);
 
   #ifdef IS_PLATE_FRAG
-    // Final Render Pass: Apply colormap, or white for the hole
-    if (u_hole == 1 && length(xy) <= u_r0) {
+    // --- Final Render Pass ---
+    // Apply colormap, or render the hole as white.
+    if (u_hole == 1 && length(world_xy) < u_r0) {
       fragColor = vec4(1.0);
     } else {
       fragColor = vec4(applyCMap(val), 1.0);
     }
   #else
-    // Min/Max Calculation Pass: Output raw stress value to RG channels
-    fragColor = vec4(val, val, 0.0, 1.0);
+    // --- Data Calculation Pass for Reduction ---
+    // If we're inside the hole, mark the fragment as invalid by setting alpha to 0.
+    // The reduction shader will then ignore these fragments.
+    if (u_hole == 1 && length(world_xy) < u_r0) {
+      fragColor = vec4(0.0, 0.0, 0.0, 0.0);
+    } else {
+      // Otherwise, output the raw data: vec4(stress_value, world_x, world_y, 1.0)
+      fragColor = vec4(val, world_xy.x, world_xy.y, 1.0);
+    }
   #endif
 }

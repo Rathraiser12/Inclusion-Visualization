@@ -20,8 +20,28 @@ viewReset.addEventListener('click', () => {
 // --- Mouse controls for pan/zoom ---
 canvas.addEventListener('wheel', e => {
   e.preventDefault();
-  zoom *= e.deltaY > 0 ? 1.1 : 0.9;
-  zoom  = clamp(zoom, 0.10, 1e6);
+
+  // 1. Get mouse position in Normalized Device Coordinates (NDC) [-1, 1]
+  const rect = canvas.getBoundingClientRect();
+  const mouseX = e.clientX - rect.left;
+  const mouseY = e.clientY - rect.top;
+  const ndcX = (mouseX / canvas.clientWidth) * 2 - 1;
+  const ndcY = 1 - (mouseY / canvas.clientHeight) * 2;
+  const aspect = canvas.clientWidth / canvas.clientHeight;
+  const mouseNdcXWithAspect = ndcX * aspect;
+  
+  // 2. Calculate the zoom ratio
+  const oldZoom = zoom;
+  const zoomFactor = e.deltaY > 0 ? 1.1 : 0.9;
+  zoom = clamp(oldZoom * zoomFactor, 0.10, 1e6);
+  
+  // 3. Calculate the pan shift needed to keep the mouse point stationary
+  // This formula finds the difference in the world position of the mouse before and after the zoom
+  // and applies it as a pan correction.
+  panX += (panX + mouseNdcXWithAspect) * (zoom / oldZoom - 1);
+  panY += (panY + ndcY) * (zoom / oldZoom - 1);
+
+  // 4. Update the input fields
   updateInputs();
 }, { passive: false });
 
@@ -33,15 +53,19 @@ window.addEventListener('mouseup',   () => dragging = false);
 window.addEventListener('mousemove', e => {
   if (!dragging) return;
   const asp = canvas.width / canvas.height;
-  panX = clamp(
-    panX - (e.clientX - lastX) / canvas.height * 2 * asp / zoom,
-   -1, 1
+
+  const panLimit = zoom; 
+ panX = clamp(
+    panX - (e.clientX - lastX) / canvas.height * 2 * asp,
+   -panLimit, panLimit
   );
   panY = clamp(
-    panY + (e.clientY - lastY) / canvas.height * 2 / zoom,
-   -1, 1
+    panY + (e.clientY - lastY) / canvas.height * 2,
+   -panLimit, panLimit
   );
-  lastX = e.clientX; lastY = e.clientY;
+
+  lastX = e.clientX; 
+  lastY = e.clientY;
   updateInputs();
 });
 
