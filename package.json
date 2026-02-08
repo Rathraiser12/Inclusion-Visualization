@@ -3,15 +3,19 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "homepage": "https://Rathraiser12.github.io/Inclusion-Visualization",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d dist"
   },
   "devDependencies": {
     "@radix-ui/react-scroll-area": "^1.2.9",
     "@types/tippy.js": "^6.3.0",
     "clsx": "^2.1.1",
+    "gh-pages": "^6.3.0",
     "lucide-react": "^0.525.0",
     "tailwind-merge": "^3.3.1",
     "typescript": "~5.7.2",
