@@ -25,6 +25,8 @@ export function worldToCanvas(worldX: number, worldY: number) {
   return { cx: cssX, cy: cssY };
 }
 export function analyticStressAt(x: number, y: number) {
+    x /= INITIAL_SCALE;
+    y /= INITIAL_SCALE;
     const { gamma, kappa_m, kappa_p } = currentMaterial();
     const lambda = num(inputs.lambda, DEF.lambda);
     const beta = num(inputs.beta, DEF.beta) * Math.PI / 180;

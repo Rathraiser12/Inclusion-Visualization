@@ -29,6 +29,15 @@
     input[type=number] {
       -moz-appearance: textfield;
     }
+    /* White background theme for Tippy */
+  .tippy-box[data-theme~='white-tip']{
+    background-color: #fff !important;
+    color: #111;
+    box-shadow: 0 10px 25px rgba(0,0,0,.12);
+    }
+    .tippy-box[data-theme~='white-tip'] .tippy-arrow{
+        color: #fff; /* arrow fill matches box (svg-arrow uses currentColor) */
+    }
   </style>
 </head>
 
@@ -144,7 +153,7 @@
 
             <div class="control-card">
                 <div class="card-header">
-                    <h2 class="card-title">Stress</h2>
+                    <h2 class="card-title">Normalised Stress</h2>
                     <span id="stress-card-info" class="info-icon">
                         <svg class="h-4 w-4 text-slate-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" />
@@ -155,8 +164,8 @@
                     <thead class="bg-slate-50/75 text-slate-600 font-medium">
                         <tr class="border-b border-slate-200/75">
                             <th class="py-1.5 px-3 text-left">Component</th>
-                            <th class="py-1.5 px-3">max<sub>&part;S</sub> &sigma;</th>
-                            <th class="py-1.5 px-3">min<sub>&part;S</sub> &sigma;</th>
+                            <th class="py-1.5 px-3">max<sub></sub> &sigma;</th>
+                            <th class="py-1.5 px-3">min<sub></sub> &sigma;</th>
                             <th class="py-1.5 px-3">&sigma;(x,y)</th>
                         </tr>
                     </thead>
