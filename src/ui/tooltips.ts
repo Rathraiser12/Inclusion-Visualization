@@ -8,7 +8,7 @@ import 'tippy.js/themes/translucent.css';
 const geomLoadContent = document.createElement('div');
 geomLoadContent.innerHTML = `
   <div style="max-width:90vw; text-align:center;">
-    <img src="/schematic-plate-circular-inclusion.svg"
+    <img src="./schematic-plate-circular-inclusion.svg"
          alt="Schematic of the plate geometry and loading"
          style="max-width:500px; width:100%; height:auto; background:#fff;"/>
   </div>
